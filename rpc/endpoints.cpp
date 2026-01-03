@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include <vector>
 
 namespace aegen {
 
@@ -70,15 +71,47 @@ void RPCEndpoints::registerAll() {
 }
 
 std::string extractJsonValue(const std::string& json, const std::string& key) {
-    std::string token = "\"" + key + "\":";
-    size_t pos = json.find(token);
+    // Look for "key" with various spacing patterns
+    std::vector<std::string> patterns = {
+        "\"" + key + "\":",
+        "\"" + key + "\": ",
+        "\"" + key + "\" :",
+        "\"" + key + "\" : "
+    };
+    
+    size_t pos = std::string::npos;
+    size_t tokenLen = 0;
+    
+    for (const auto& pattern : patterns) {
+        pos = json.find(pattern);
+        if (pos != std::string::npos) {
+            tokenLen = pattern.length();
+            break;
+        }
+    }
+    
     if (pos == std::string::npos) return "";
     
-    size_t valStart = pos + token.length();
-    while(valStart < json.length() && (json[valStart] == ' ' || json[valStart] == '"' || json[valStart] == ':')) valStart++;
+    size_t valStart = pos + tokenLen;
     
+    // Skip any remaining whitespace
+    while (valStart < json.length() && (json[valStart] == ' ' || json[valStart] == '\t')) {
+        valStart++;
+    }
+    
+    // Check if value is a string (starts with quote)
+    if (valStart < json.length() && json[valStart] == '"') {
+        valStart++; // Skip opening quote
+        size_t valEnd = json.find('"', valStart);
+        if (valEnd == std::string::npos) return "";
+        return json.substr(valStart, valEnd - valStart);
+    }
+    
+    // Otherwise it's a number or other value
     size_t valEnd = valStart;
-    while(valEnd < json.length() && json[valEnd] != ',' && json[valEnd] != '}' && json[valEnd] != '"') valEnd++;
+    while (valEnd < json.length() && json[valEnd] != ',' && json[valEnd] != '}' && json[valEnd] != ' ') {
+        valEnd++;
+    }
     
     return json.substr(valStart, valEnd - valStart);
 }
