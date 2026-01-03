@@ -101,13 +101,14 @@
 <body>
     <nav class="navbar">
         <a href="index.html" class="logo">
-            <div class="logo-icon">⬡</div>
+            <img src="logo.png" alt="AEGEN" class="logo-icon" style="width:32px;height:32px;border-radius:4px;">
             AEGEN<span>SCAN</span>
         </a>
         <div class="nav-links">
             <a href="index.html">Dashboard</a>
             <a href="blocks.html">Blocks</a>
             <a href="transactions.html" class="active">Transactions</a>
+            <a href="tokens.html">Tokens</a>
         </div>
         <div class="search-box">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -173,7 +174,8 @@
         <div class="footer-content">
             <div class="footer-brand">
                 <h3>
-                    <div class="logo-icon" style="width:24px;height:24px;font-size:0.75rem;">⬡</div> AEGEN
+                    <img src="logo.png" alt="AEGEN"
+                        style="width:24px;height:24px;vertical-align:middle;border-radius:3px;"> AEGEN
                 </h3>
                 <p>The high-performance Layer-2 blockchain for Kadena.</p>
             </div>
@@ -182,15 +184,23 @@
                 <a href="index.html">Dashboard</a>
                 <a href="blocks.html">All Blocks</a>
                 <a href="transactions.html">All Transactions</a>
+                <a href="tokens.html">Tokens</a>
             </div>
             <div class="footer-links">
                 <h4>Network</h4>
-                <a href="#">RPC: localhost:8545</a>
-                <a href="#">P2P: localhost:30303</a>
+                <a href="#" id="footerRpc">RPC: Loading...</a>
+                <a href="#" id="footerP2p">P2P: Loading...</a>
             </div>
         </div>
         <div class="footer-bottom">© 2026 Aegen Foundation. Powered by C++ Core.</div>
     </footer>
+
+    <script>
+        // Set dynamic footer
+        const host = window.location.hostname || 'localhost';
+        document.getElementById('footerRpc').textContent = `RPC: ${host}:8545`;
+        document.getElementById('footerP2p').textContent = `P2P: ${host}:30303`;
+    </script>
 
     <script src="data.js"></script>
     <script>

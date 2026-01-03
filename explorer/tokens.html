@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tokens | AEGEN SCAN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <img src="logo.png" alt="AEGEN" class="logo-icon" style="width:32px;height:32px;border-radius:4px;">
+            AEGEN<span>SCAN</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html">Dashboard</a>
+            <a href="blocks.html">Blocks</a>
+            <a href="transactions.html">Transactions</a>
+            <a href="tokens.html" class="active">Tokens</a>
+        </div>
+        <div class="search-box">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="text" placeholder="Search Blocks, Txs, or Addresses..." id="searchInput"
+                onkeyup="handleSearch(event)">
+        </div>
+    </nav>
+
+    <!-- Connection Status -->
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <h2 class="page-title">Tokens</h2>
+
+        <!-- Tokens List -->
+        <div class="panel">
+            <div id="tokensList">
+                <div class="list-item" style="justify-content:center;color:var(--text-muted);">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>
+                    <img src="logo.png" alt="AEGEN"
+                        style="width:24px;height:24px;vertical-align:middle;border-radius:3px;"> AEGEN
+                </h3>
+                <p>The high-performance Layer-2 blockchain for Kadena. Processing transactions with sub-second finality
+                    and enterprise-grade security.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Explorer</h4>
+                <a href="index.html">Dashboard</a>
+                <a href="blocks.html">Blocks</a>
+                <a href="transactions.html">Transactions</a>
+                <a href="tokens.html">Tokens</a>
+            </div>
+            <div class="footer-links">
+                <h4>Network</h4>
+                <a href="#" id="footerRpc">RPC: Loading...</a>
+                <a href="#" id="footerP2p">P2P: Loading...</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© 2026 Aegen Foundation. Powered by C++ Core.</div>
+    </footer>
+
+    <script src="data.js"></script>
+    <script>
+        async function renderTokens() {
+            try {
+                // Update footer
+                const host = window.location.hostname || 'localhost';
+                document.getElementById('footerRpc').textContent = `RPC: ${host}:8545`;
+                document.getElementById('footerP2p').textContent = `P2P: ${host}:30303`;
+
+                // Fetch tokens
+                const tokens = await fetchTokens();
+
+                if (tokens && tokens.length > 0) {
+                    document.getElementById('tokensList').innerHTML = `
+                        <div class="list-header">
+                            <div>Name</div>
+                            <div>Symbol</div>
+                            <div>Total Supply</div>
+                            <div>Module</div>
+                        </div>
+                    ` + tokens.map(token => `
+                        <div class="list-item">
+                            <div class="item-info">
+                                <h4>${token.name}</h4>
+                            </div>
+                            <div class="item-info">
+                                <span class="status-badge" style="background:rgba(59, 130, 246, 0.2);color:#3b82f6;">${token.symbol}</span>
+                            </div>
+                            <div class="item-right">
+                                <div class="count">${formatSupply(token.totalSupply, token.precision)}</div>
+                            </div>
+                            <div class="item-right" style="font-family:monospace;color:var(--text-muted);">
+                                ${token.module}
+                            </div>
+                        </div>
+                    `).join('');
+
+                    document.getElementById('connectionStatus').textContent = '● Connected to RPC';
+                    document.getElementById('connectionStatus').className = 'connection-status connected';
+                } else {
+                    document.getElementById('tokensList').innerHTML = '<div class="list-item" style="justify-content:center;color:var(--text-muted);">No tokens found</div>';
+                }
+            } catch (e) {
+                console.error('Error fetching tokens:', e);
+                document.getElementById('connectionStatus').textContent = '○ RPC Disconnected';
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+            }
+        }
+
+        function formatSupply(supply, precision) {
+            const val = supply / Math.pow(10, precision);
+            return val.toLocaleString(undefined, { maximumFractionDigits: precision });
+        }
+
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                const query = document.getElementById('searchInput').value.trim();
+                // ... same search logic ...
+            }
+        }
+
+        renderTokens();
+    </script>
+</body>
+
+</html>

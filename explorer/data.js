@@ -152,6 +152,15 @@ async function generateWallet() {
     return result;
 }
 
+// Fetch tokens from RPC
+async function fetchTokens() {
+    const result = await rpcCall('details', {}); // 'details' endpoint maps to listTokens
+    if (result) {
+        return result;
+    }
+    return [];
+}
+
 // Get balance
 async function getBalance(account) {
     const result = await rpcCall('getBalance', { account });
