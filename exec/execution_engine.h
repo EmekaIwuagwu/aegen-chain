@@ -7,6 +7,10 @@ namespace aegen {
 
 class ExecutionEngine {
     StateManager& stateManager;
+    
+    // Execute data field operations (token transfers, etc.)
+    void executeData(const Transaction& tx);
+    
 public:
     ExecutionEngine(StateManager& sm);
 
