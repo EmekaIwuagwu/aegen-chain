@@ -9,5 +9,17 @@ target_include_directories(aegen_settlement PUBLIC
     ${CMAKE_SOURCE_DIR}
 )
 
-# Link WinHTTP for HTTPS requests
-target_link_libraries(aegen_settlement PUBLIC aegen_core ws2_32 winhttp)
+target_link_libraries(aegen_settlement PUBLIC aegen_core)
+
+# Windows-specific HTTP library
+if(WIN32)
+    target_link_libraries(aegen_settlement PUBLIC ws2_32 winhttp)
+endif()
+
+# Linux: For production with real HTTPS, add libcurl
+# find_package(CURL)
+# if(CURL_FOUND)
+#     target_link_libraries(aegen_settlement PUBLIC ${CURL_LIBRARIES})
+#     target_include_directories(aegen_settlement PRIVATE ${CURL_INCLUDE_DIRS})
+#     target_compile_definitions(aegen_settlement PRIVATE USE_CURL=1)
+# endif()
