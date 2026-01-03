@@ -105,7 +105,7 @@ class BlockStore {
         }
 
         // Load all blocks into cache
-        for (uint64_t h = 1; h <= currentHeight; h++) {
+        for (uint64_t h = 0; h <= currentHeight; h++) {
             std::string key = "block:" + std::to_string(h);
             std::string data = db->get(key);
             if (!data.empty()) {

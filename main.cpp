@@ -79,7 +79,24 @@ int main() {
     // Create genesis token (fungible-v2 style)
     TokenId genesisToken = tokenManager.createFungible("Aegen Token", "AE", 12, 1000000000, "k:genesis");
     
+    // Create Genesis Block (Height 0)
+    std::cout << "[GENESIS] Creating Genesis Block..." << std::endl;
+    Block genesisBlock;
+    genesisBlock.header.height = 0;
+    genesisBlock.header.timestamp = std::time(nullptr);
+    genesisBlock.header.previousHash = {}; // Zero hash
+    genesisBlock.header.stateRoot = stateManager.getRootHash();
+    genesisBlock.header.producer = "genesis";
+    genesisBlock.header.txRoot = {}; // Empty merkle root
+    
+    // Sign Genesis
+    Hash genesisHash = genesisBlock.calculateHash();
+    genesisBlock.header.signature = Signer::sign(std::vector<uint8_t>(genesisHash.begin(), genesisHash.end()), leaderKeys.privateKey);
+    
+    blockStore.addBlock(genesisBlock);
+    
     std::cout << "\n[GENESIS] State initialized:" << std::endl;
+    std::cout << "  - Root: " << crypto::to_hex(genesisBlock.header.stateRoot) << std::endl;
     std::cout << "  - alice: 10,000,000 AE" << std::endl;
     std::cout << "  - bob:   10,000,000 AE" << std::endl;
     std::cout << "  - Genesis Token: " << genesisToken << std::endl;
@@ -90,21 +107,43 @@ int main() {
     std::cout << "\nPress Ctrl+C to stop.\n" << std::endl;
 
     uint64_t height = 1;
-    Hash prevHash = {};
+    Hash prevHash = genesisHash;
+    uint64_t lastBlockTime = std::time(nullptr);
 
     while(true) {
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        // PROOF OF STAKE / LIVENESS LOGIC
+        // We produce a block if:
+        // 1. There are transactions in the mempool (Speed up)
+        // 2. OR 10 seconds have passed since last block (Liveness/Heartbeat)
+        
+        bool shouldProduce = false;
         
         if (mempool.size() > 0) {
-            std::cout << "\n[BLOCK " << height << "] Producing block with " << mempool.size() << " txs..." << std::endl;
+            shouldProduce = true;
+        } else {
+            uint64_t now = std::time(nullptr);
+            if (now - lastBlockTime >= 10) {
+                shouldProduce = true; // Heartbeat block
+            }
+        }
+        
+        if (shouldProduce) {
+            if (mempool.size() > 0) {
+                std::cout << "\n[BLOCK " << height << "] Producing block with " << mempool.size() << " txs..." << std::endl;
+            } else {
+                // Heartbeat log (less verbose)
+                // std::cout << "[HEARTBEAT] Block " << height << " (empty)" << std::endl;
+            }
             
-            Block block = leader.proposeBlock(height, 0, prevHash);
+            Block block = leader.proposeBlock(height, lastBlockTime, prevHash);
             
             // PBFT Consensus (simplified for single node)
             consensus.onPrePrepare(block);
             
-            std::cout << "[BLOCK " << height << "] Finalized! Txs: " << block.transactions.size() 
-                      << " | StateRoot: " << crypto::to_hex(block.header.stateRoot).substr(0, 16) << "..." << std::endl;
+            if (block.transactions.size() > 0) {
+                std::cout << "[BLOCK " << height << "] Finalized! Txs: " << block.transactions.size() 
+                          << " | StateRoot: " << crypto::to_hex(block.header.stateRoot).substr(0, 16) << "..." << std::endl;
+            }
             
             // Store finalized block
             blockStore.addBlock(block);
@@ -112,17 +151,22 @@ int main() {
             // Broadcast to P2P network
             gossip.broadcastBlock(block);
             
-            // Add to batch
-            batchManager.addBlock(block);
-            if (batchManager.shouldBatch()) {
-                std::cout << "\n[SETTLEMENT] Creating batch..." << std::endl;
-                Batch batch = batchManager.createBatch();
-                bridge.settleBatch(batch);
+            // Add to batch (only if not empty, to save L1 gas)
+            if (block.transactions.size() > 0) {
+                batchManager.addBlock(block);
+                if (batchManager.shouldBatch()) {
+                    std::cout << "\n[SETTLEMENT] Creating batch..." << std::endl;
+                    Batch batch = batchManager.createBatch();
+                    bridge.settleBatch(batch);
+                }
             }
             
             prevHash = block.calculateHash();
+            lastBlockTime = block.header.timestamp;
             height++;
         }
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Check frequency
     }
 
     return 0;
