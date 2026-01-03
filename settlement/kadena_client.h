@@ -36,6 +36,13 @@ class KadenaClient {
     std::string buildPactPayload(const std::string& pactCode, const std::map<std::string, std::string>& envData);
     std::string signPayload(const std::string& payload);
     std::string httpPost(const std::string& url, const std::string& body);
+    
+    // Platform-specific HTTP implementations
+#ifdef _WIN32
+    std::string httpPostWindows(const std::string& url, const std::string& body);
+#else
+    std::string httpPostLinux(const std::string& url, const std::string& body);
+#endif
 
 public:
     KadenaClient();
