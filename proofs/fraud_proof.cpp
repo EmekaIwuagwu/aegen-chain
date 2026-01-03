@@ -1,0 +1,1 @@
+namespace aegen { class FraudProof {}; }

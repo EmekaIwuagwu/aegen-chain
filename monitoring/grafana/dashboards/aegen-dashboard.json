@@ -1,0 +1,256 @@
+{
+    "annotations": {
+        "list": []
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "links": [],
+    "liveNow": true,
+    "panels": [
+        {
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 0,
+                "y": 0
+            },
+            "id": 1,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto"
+            },
+            "targets": [
+                {
+                    "expr": "aegen_blocks_produced_total",
+                    "refId": "A"
+                }
+            ],
+            "title": "Total Blocks",
+            "type": "stat"
+        },
+        {
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 6,
+                "y": 0
+            },
+            "id": 2,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area"
+            },
+            "targets": [
+                {
+                    "expr": "aegen_transactions_processed_total",
+                    "refId": "A"
+                }
+            ],
+            "title": "Total Transactions",
+            "type": "stat"
+        },
+        {
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 12,
+                "y": 0
+            },
+            "id": 3,
+            "targets": [
+                {
+                    "expr": "aegen_peers_connected",
+                    "refId": "A"
+                }
+            ],
+            "title": "Connected Peers",
+            "type": "stat"
+        },
+        {
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 18,
+                "y": 0
+            },
+            "id": 4,
+            "targets": [
+                {
+                    "expr": "aegen_transactions_pending",
+                    "refId": "A"
+                }
+            ],
+            "title": "Pending Transactions",
+            "type": "stat"
+        },
+        {
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 4
+            },
+            "id": 5,
+            "targets": [
+                {
+                    "expr": "rate(aegen_blocks_produced_total[5m])",
+                    "legendFormat": "Blocks/sec",
+                    "refId": "A"
+                }
+            ],
+            "title": "Block Production Rate",
+            "type": "timeseries"
+        },
+        {
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 4
+            },
+            "id": 6,
+            "targets": [
+                {
+                    "expr": "rate(aegen_transactions_processed_total[5m])",
+                    "legendFormat": "TXs/sec",
+                    "refId": "A"
+                }
+            ],
+            "title": "Transaction Throughput",
+            "type": "timeseries"
+        },
+        {
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 12
+            },
+            "id": 7,
+            "targets": [
+                {
+                    "expr": "aegen_block_time_ms{quantile=\"0.5\"}",
+                    "legendFormat": "p50",
+                    "refId": "A"
+                },
+                {
+                    "expr": "aegen_block_time_ms{quantile=\"0.9\"}",
+                    "legendFormat": "p90",
+                    "refId": "B"
+                },
+                {
+                    "expr": "aegen_block_time_ms{quantile=\"0.99\"}",
+                    "legendFormat": "p99",
+                    "refId": "C"
+                }
+            ],
+            "title": "Block Time Latency (ms)",
+            "type": "timeseries"
+        },
+        {
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 12
+            },
+            "id": 8,
+            "targets": [
+                {
+                    "expr": "aegen_rpc_latency_ms{quantile=\"0.5\"}",
+                    "legendFormat": "p50",
+                    "refId": "A"
+                },
+                {
+                    "expr": "aegen_rpc_latency_ms{quantile=\"0.9\"}",
+                    "legendFormat": "p90",
+                    "refId": "B"
+                }
+            ],
+            "title": "RPC Latency (ms)",
+            "type": "timeseries"
+        },
+        {
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 0,
+                "y": 20
+            },
+            "id": 9,
+            "targets": [
+                {
+                    "expr": "aegen_settlement_batches_total",
+                    "refId": "A"
+                }
+            ],
+            "title": "L1 Settlement Batches",
+            "type": "stat"
+        },
+        {
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 8,
+                "y": 20
+            },
+            "id": 10,
+            "targets": [
+                {
+                    "expr": "aegen_da_blobs_stored_total",
+                    "refId": "A"
+                }
+            ],
+            "title": "DA Blobs Stored",
+            "type": "stat"
+        },
+        {
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 16,
+                "y": 20
+            },
+            "id": 11,
+            "targets": [
+                {
+                    "expr": "aegen_memory_bytes / 1024 / 1024",
+                    "refId": "A"
+                }
+            ],
+            "title": "Memory Usage (MB)",
+            "type": "gauge"
+        }
+    ],
+    "refresh": "5s",
+    "schemaVersion": 38,
+    "style": "dark",
+    "tags": [
+        "aegen",
+        "blockchain",
+        "l2"
+    ],
+    "templating": {
+        "list": []
+    },
+    "time": {
+        "from": "now-1h",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Aegen L2 Dashboard",
+    "uid": "aegen-l2-main",
+    "version": 1
+}

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Blocks | AEGEN SCAN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .pagination-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-purple);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .page-size-select {
+            padding: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            margin-left: 1rem;
+        }
+
+        .loading-row {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2rem;
+        }
+
+        .connection-status {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">⬡</div>
+            AEGEN<span>SCAN</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html">Dashboard</a>
+            <a href="blocks.html" class="active">Blocks</a>
+            <a href="transactions.html">Transactions</a>
+        </div>
+        <div class="search-box">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="text" placeholder="Search Blocks, Txs, or Addresses..." id="searchInput"
+                onkeyup="handleSearch(event)">
+        </div>
+    </nav>
+
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+
+    <div class="container">
+        <div class="page-header">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>Blocks</span>
+            </div>
+            <h1>All Blocks</h1>
+            <p>View all blocks on the Aegen L2 network. Total: <span id="totalBlocks">0</span> blocks</p>
+        </div>
+
+        <div class="panel">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Block</th>
+                        <th>Hash</th>
+                        <th>Txs</th>
+                        <th>Gas Used</th>
+                        <th>Validator</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="blocksTable">
+                    <tr>
+                        <td colspan="6" class="loading-row">Loading blocks...</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Showing <span id="showingFrom">0</span> to <span id="showingTo">0</span> of <span
+                        id="totalItems">0</span> blocks
+                </div>
+                <div class="pagination-controls">
+                    <button class="page-btn" id="prevBtn" onclick="prevPage()" disabled>← Previous</button>
+                    <div class="page-numbers" id="pageNumbers"></div>
+                    <button class="page-btn" id="nextBtn" onclick="nextPage()" disabled>Next →</button>
+                    <select class="page-size-select" id="pageSizeSelect" onchange="changePageSize()">
+                        <option value="10">10 / page</option>
+                        <option value="25">25 / page</option>
+                        <option value="50">50 / page</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>
+                    <div class="logo-icon" style="width:24px;height:24px;font-size:0.75rem;">⬡</div> AEGEN
+                </h3>
+                <p>The high-performance Layer-2 blockchain for Kadena.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Explorer</h4>
+                <a href="index.html">Dashboard</a>
+                <a href="blocks.html">All Blocks</a>
+                <a href="transactions.html">All Transactions</a>
+            </div>
+            <div class="footer-links">
+                <h4>Network</h4>
+                <a href="#">RPC: localhost:8545</a>
+                <a href="#">P2P: localhost:30303</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© 2026 Aegen Foundation. Powered by C++ Core.</div>
+    </footer>
+
+    <script src="data.js"></script>
+    <script>
+        let currentPage = 1;
+        let pageSize = 10;
+        let totalBlocks = 0;
+        let totalPages = 1;
+
+        async function loadBlocks() {
+            try {
+                const data = await fetchBlocks(currentPage, pageSize);
+
+                if (data && data.blocks) {
+                    document.getElementById('connectionStatus').textContent = '● Connected to RPC';
+                    document.getElementById('connectionStatus').className = 'connection-status connected';
+
+                    totalBlocks = data.total;
+                    totalPages = Math.ceil(totalBlocks / pageSize) || 1;
+
+                    document.getElementById('totalBlocks').textContent = totalBlocks.toLocaleString();
+                    renderBlocks(data.blocks);
+                    updatePagination();
+                } else {
+                    throw new Error('No data');
+                }
+            } catch (e) {
+                document.getElementById('connectionStatus').textContent = '○ RPC Disconnected';
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+
+                // Use fallback
+                const blocks = getBlocks(pageSize);
+                totalBlocks = 100;
+                totalPages = Math.ceil(totalBlocks / pageSize);
+                document.getElementById('totalBlocks').textContent = totalBlocks;
+                renderBlocks(blocks);
+                updatePagination();
+            }
+        }
+
+        function renderBlocks(blocks) {
+            if (blocks.length === 0) {
+                document.getElementById('blocksTable').innerHTML = '<tr><td colspan="6" class="loading-row">No blocks found</td></tr>';
+                return;
+            }
+
+            document.getElementById('blocksTable').innerHTML = blocks.map(block => `
+                <tr onclick="window.location='block.html?height=${block.height}'" style="cursor:pointer;">
+                    <td><strong>${block.height}</strong></td>
+                    <td style="color:var(--accent-cyan);font-family:monospace;">${block.hash.substring(0, 16)}...</td>
+                    <td>${block.txCount}</td>
+                    <td>${(block.gasUsed || 0).toLocaleString()}</td>
+                    <td>${block.validator}</td>
+                    <td style="color:var(--text-muted);">${block.timestamp}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updatePagination() {
+            const startIdx = (currentPage - 1) * pageSize + 1;
+            const endIdx = Math.min(currentPage * pageSize, totalBlocks);
+
+            document.getElementById('showingFrom').textContent = totalBlocks > 0 ? startIdx : 0;
+            document.getElementById('showingTo').textContent = endIdx;
+            document.getElementById('totalItems').textContent = totalBlocks;
+
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+
+            renderPageNumbers();
+        }
+
+        function renderPageNumbers() {
+            const container = document.getElementById('pageNumbers');
+            let html = '';
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+            if (startPage > 1) {
+                html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span style="color:var(--text-muted);padding:0 0.5rem;">...</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span style="color:var(--text-muted);padding:0 0.5rem;">...</span>`;
+                html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function goToPage(page) { currentPage = page; loadBlocks(); }
+        function prevPage() { if (currentPage > 1) { currentPage--; loadBlocks(); } }
+        function nextPage() { if (currentPage < totalPages) { currentPage++; loadBlocks(); } }
+        function changePageSize() { pageSize = parseInt(document.getElementById('pageSizeSelect').value); currentPage = 1; loadBlocks(); }
+        function handleSearch(event) { if (event.key === 'Enter') { const q = document.getElementById('searchInput').value; if (!isNaN(q)) window.location.href = 'block.html?height=' + q; } }
+
+        loadBlocks();
+    </script>
+</body>
+
+</html>

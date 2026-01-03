@@ -1,0 +1,70 @@
+# Kadena Devnet + Aegen L2 Local Testing
+# ========================================
+# This runs a local Kadena node so you don't need testnet faucets!
+
+version: '3.8'
+
+services:
+  # Kadena Devnet (Local L1)
+  kadena-devnet:
+    image: kadena/devnet:latest
+    container_name: kadena-devnet
+    ports:
+      - "8080:8080"   # Chainweb API
+      - "1848:1848"   # Mining API
+    environment:
+      - KADENA_LOG_LEVEL=info
+    volumes:
+      - kadena-devnet-data:/chainweb-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/chainweb/0.0/development/cut"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - aegen-network
+
+  # Aegen L2 Node
+  aegen-l2:
+    build: .
+    container_name: aegen-l2-node
+    ports:
+      - "8545:8545"
+      - "30303:30303"
+    environment:
+      - AEGEN_NODE_ID=aegen-validator-1
+      - AEGEN_IS_VALIDATOR=true
+      - AEGEN_RPC_PORT=8545
+      - AEGEN_P2P_PORT=30303
+      # Point to local devnet instead of testnet
+      - AEGEN_L1_URL=http://kadena-devnet:8080
+      - AEGEN_L1_NETWORK=development
+      - AEGEN_L1_CHAIN=0
+    depends_on:
+      kadena-devnet:
+        condition: service_healthy
+    volumes:
+      - aegen-data:/app/data
+    networks:
+      - aegen-network
+
+  # Block Explorer
+  explorer:
+    image: nginx:alpine
+    container_name: aegen-explorer
+    ports:
+      - "3000:80"
+    volumes:
+      - ./explorer:/usr/share/nginx/html:ro
+    depends_on:
+      - aegen-l2
+    networks:
+      - aegen-network
+
+networks:
+  aegen-network:
+    driver: bridge
+
+volumes:
+  kadena-devnet-data:
+  aegen-data:

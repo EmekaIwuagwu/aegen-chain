@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGEN SCAN | Layer-2 for Kadena</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .connection-status {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">⬡</div>
+            AEGEN<span>SCAN</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html" class="active">Dashboard</a>
+            <a href="blocks.html">Blocks</a>
+            <a href="transactions.html">Transactions</a>
+        </div>
+        <div class="search-box">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="text" placeholder="Search Blocks, Txs, or Addresses..." id="searchInput"
+                onkeyup="handleSearch(event)">
+        </div>
+    </nav>
+
+    <!-- Connection Status -->
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon purple">⬡</div>
+                <div class="stat-info">
+                    <h3>Block Height</h3>
+                    <div class="value loading" id="blockHeight">#0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon cyan">⟐</div>
+                <div class="stat-info">
+                    <h3>Peers Connected</h3>
+                    <div class="value loading" id="peerCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">↻</div>
+                <div class="stat-info">
+                    <h3>Pending TXS</h3>
+                    <div class="value loading" id="pendingTxs">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue">◎</div>
+                <div class="stat-info">
+                    <h3>Total Transactions</h3>
+                    <div class="value loading" id="totalTxs">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Latest Blocks -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <rect x="2" y="2" width="12" height="4" rx="1" />
+                            <rect x="2" y="8" width="12" height="6" rx="1" />
+                        </svg>
+                        Latest Blocks
+                    </div>
+                    <a href="blocks.html" class="view-all">View All →</a>
+                </div>
+                <div id="blocksList">
+                    <div class="list-item" style="justify-content:center;color:var(--text-muted);">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Latest Transactions -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M2 4h12M2 8h8M2 12h10" />
+                        </svg>
+                        Latest Transactions
+                    </div>
+                    <a href="transactions.html" class="view-all">View All →</a>
+                </div>
+                <div id="txsList">
+                    <div class="list-item" style="justify-content:center;color:var(--text-muted);">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>
+                    <div class="logo-icon" style="width:24px;height:24px;font-size:0.75rem;">⬡</div> AEGEN
+                </h3>
+                <p>The high-performance Layer-2 blockchain for Kadena. Processing transactions with sub-second finality
+                    and enterprise-grade security.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Explorer</h4>
+                <a href="index.html">Dashboard</a>
+                <a href="blocks.html">All Blocks</a>
+                <a href="transactions.html">All Transactions</a>
+            </div>
+            <div class="footer-links">
+                <h4>Network</h4>
+                <a href="#">RPC: localhost:8545</a>
+                <a href="#">P2P: localhost:30303</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© 2026 Aegen Foundation. Powered by C++ Core.</div>
+    </footer>
+
+    <script src="data.js"></script>
+    <script>
+        let isConnected = false;
+
+        async function renderDashboard() {
+            try {
+                // Fetch chain info
+                const chainInfo = await getChainInfo();
+
+                if (chainInfo && chainInfo.blockHeight !== undefined) {
+                    isConnected = true;
+                    document.getElementById('connectionStatus').textContent = '● Connected to RPC';
+                    document.getElementById('connectionStatus').className = 'connection-status connected';
+
+                    // Update stats
+                    document.getElementById('blockHeight').textContent = '#' + chainInfo.blockHeight;
+                    document.getElementById('blockHeight').classList.remove('loading');
+
+                    document.getElementById('pendingTxs').textContent = chainInfo.mempoolSize || 0;
+                    document.getElementById('pendingTxs').classList.remove('loading');
+
+                    document.getElementById('peerCount').textContent = chainInfo.peerCount || 0;
+                    document.getElementById('peerCount').classList.remove('loading');
+
+                    document.getElementById('totalTxs').textContent = (chainInfo.totalTransactions || 0).toLocaleString();
+                    document.getElementById('totalTxs').classList.remove('loading');
+                } else {
+                    throw new Error('RPC unavailable');
+                }
+
+                // Fetch latest blocks
+                const blocksData = await fetchBlocks(1, 5);
+                if (blocksData.blocks.length > 0) {
+                    document.getElementById('blocksList').innerHTML = blocksData.blocks.map(block => `
+                        <a href="block.html?height=${block.height}" class="list-item">
+                            <div class="item-left">
+                                <div class="item-badge block">BK</div>
+                                <div class="item-info">
+                                    <h4>Block ${block.height}</h4>
+                                    <p>Hash: ${block.hash.substring(0, 16)}...</p>
+                                </div>
+                            </div>
+                            <div class="item-right">
+                                <div class="count">${block.txCount} txs</div>
+                                <div class="time">${block.timestamp}</div>
+                            </div>
+                        </a>
+                    `).join('');
+                } else {
+                    document.getElementById('blocksList').innerHTML = '<div class="list-item" style="justify-content:center;color:var(--text-muted);">No blocks yet. Send a transaction!</div>';
+                }
+
+                // Fetch latest transactions
+                const txsData = await fetchTransactions(1, 5);
+                if (txsData.transactions.length > 0) {
+                    document.getElementById('txsList').innerHTML = txsData.transactions.map(tx => `
+                        <a href="transaction.html?hash=${tx.hash}" class="list-item">
+                            <div class="item-left">
+                                <div class="item-badge tx">Tx</div>
+                                <div class="item-info">
+                                    <h4>${tx.hash.substring(0, 16)}...</h4>
+                                    <p>Block ${tx.blockHeight}</p>
+                                </div>
+                            </div>
+                            <div class="item-right">
+                                <span class="status-badge">${tx.status}</span>
+                                <div class="time">${tx.timestamp}</div>
+                            </div>
+                        </a>
+                    `).join('');
+                } else {
+                    document.getElementById('txsList').innerHTML = '<div class="list-item" style="justify-content:center;color:var(--text-muted);">No transactions yet</div>';
+                }
+
+            } catch (e) {
+                console.error('Error fetching data:', e);
+                isConnected = false;
+                document.getElementById('connectionStatus').textContent = '○ RPC Disconnected';
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+
+                // Use fallback data
+                useFallbackData();
+            }
+        }
+
+        function useFallbackData() {
+            document.getElementById('blockHeight').textContent = '#0';
+            document.getElementById('blockHeight').classList.remove('loading');
+            document.getElementById('pendingTxs').textContent = '0';
+            document.getElementById('pendingTxs').classList.remove('loading');
+            document.getElementById('peerCount').textContent = '0';
+            document.getElementById('peerCount').classList.remove('loading');
+            document.getElementById('totalTxs').textContent = '0';
+            document.getElementById('totalTxs').classList.remove('loading');
+
+            // Show fallback blocks
+            const blocks = getBlocks(5);
+            document.getElementById('blocksList').innerHTML = blocks.map(block => `
+                <a href="block.html?height=${block.height}" class="list-item">
+                    <div class="item-left">
+                        <div class="item-badge block">BK</div>
+                        <div class="item-info">
+                            <h4>Block ${block.height}</h4>
+                            <p>Hash: ${block.hash.substring(0, 16)}...</p>
+                        </div>
+                    </div>
+                    <div class="item-right">
+                        <div class="count">${block.txCount} txs</div>
+                        <div class="time">${block.timestamp}</div>
+                    </div>
+                </a>
+            `).join('');
+
+            // Show fallback transactions
+            const txs = getTransactions(5);
+            document.getElementById('txsList').innerHTML = txs.map(tx => `
+                <a href="transaction.html?hash=${tx.hash}" class="list-item">
+                    <div class="item-left">
+                        <div class="item-badge tx">Tx</div>
+                        <div class="item-info">
+                            <h4>${tx.hash.substring(0, 16)}...</h4>
+                            <p>Block ${tx.blockHeight}</p>
+                        </div>
+                    </div>
+                    <div class="item-right">
+                        <span class="status-badge">${tx.status}</span>
+                        <div class="time">${tx.timestamp}</div>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                const query = document.getElementById('searchInput').value.trim();
+                if (!query) return;
+
+                if (query.startsWith('k:') || query.length === 66) {
+                    window.location.href = 'transactions.html?account=' + query;
+                } else if (!isNaN(query)) {
+                    window.location.href = 'block.html?height=' + query;
+                } else {
+                    window.location.href = 'transaction.html?hash=' + query;
+                }
+            }
+        }
+
+        // Initial render
+        renderDashboard();
+
+        // Auto-refresh every 5 seconds
+        setInterval(renderDashboard, 5000);
+    </script>
+</body>
+
+</html>

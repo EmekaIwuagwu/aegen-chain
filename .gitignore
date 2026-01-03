@@ -1,0 +1,52 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# IDE files
+.vs/
+.vscode/
+*.vcxproj.user
+.idea/
+
+# Compiled files
+*.exe
+*.dll
+*.lib
+*.obj
+*.o
+*.a
+*.pdb
+*.ilk
+*.idb
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+
+# Keys (don't commit secrets!)
+kadena_keys.json
+*.key
+*.pem
+
+# Logs
+*.log
+logs/
+
+# Data
+data/
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker volumes
+validator*-data/
+validator*-logs/
+prometheus-data/
+grafana-data/

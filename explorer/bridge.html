@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGEN Bridge | L1 ↔ L2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .bridge-container {
+            max-width: 520px;
+            margin: 2rem auto;
+        }
+
+        .bridge-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .bridge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .bridge-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .bridge-tabs {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-secondary);
+            padding: 0.25rem;
+            border-radius: 10px;
+        }
+
+        .bridge-tab {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .bridge-tab.active {
+            background: var(--accent-purple);
+            color: white;
+        }
+
+        .network-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .network-box {
+            flex: 1;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .network-box.active {
+            border-color: var(--accent-purple);
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .network-box h4 {
+            margin: 0 0 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .network-box .network-name {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .network-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+        }
+
+        .network-icon.kadena {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        }
+
+        .network-icon.aegen {
+            background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+        }
+
+        .swap-arrow {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .swap-arrow:hover {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+            transform: rotate(180deg);
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .input-group label .balance {
+            color: var(--accent-cyan);
+            cursor: pointer;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent-purple);
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .input-wrapper .token-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .max-btn {
+            padding: 0.25rem 0.5rem;
+            background: rgba(139, 92, 246, 0.2);
+            border: none;
+            border-radius: 4px;
+            color: var(--accent-purple);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 0.5rem;
+        }
+
+        .fee-info {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .fee-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .fee-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .fee-row .label {
+            color: var(--text-secondary);
+        }
+
+        .bridge-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .bridge-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+
+        .bridge-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .recent-bridges {
+            margin-top: 2rem;
+        }
+
+        .recent-bridges h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .bridge-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+
+        .bridge-item .direction {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .bridge-item .amount {
+            font-weight: 600;
+        }
+
+        .bridge-item .status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .bridge-item .status.pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .bridge-item .status.complete {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .connect-wallet-msg {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">⬡</div>
+            AEGEN<span>SCAN</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html">Dashboard</a>
+            <a href="blocks.html">Blocks</a>
+            <a href="transactions.html">Transactions</a>
+            <a href="bridge.html" class="active">Bridge</a>
+        </div>
+        <button class="bridge-btn" id="connectWallet" style="width:auto;padding:0.5rem 1rem;">Connect Wallet</button>
+    </nav>
+
+    <div class="container bridge-container">
+        <div class="bridge-card">
+            <div class="bridge-header">
+                <h2>Cross-Chain Bridge</h2>
+                <div class="bridge-tabs">
+                    <button class="bridge-tab active" onclick="setMode('deposit')">Deposit</button>
+                    <button class="bridge-tab" onclick="setMode('withdraw')">Withdraw</button>
+                </div>
+            </div>
+
+            <div class="network-selector">
+                <div class="network-box" id="fromNetwork">
+                    <h4>From</h4>
+                    <div class="network-name">
+                        <div class="network-icon kadena">K</div>
+                        Kadena L1
+                    </div>
+                </div>
+                <div class="swap-arrow" onclick="swapNetworks()">⇄</div>
+                <div class="network-box active" id="toNetwork">
+                    <h4>To</h4>
+                    <div class="network-name">
+                        <div class="network-icon aegen">⬡</div>
+                        Aegen L2
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>
+                    <span>Amount</span>
+                    <span class="balance" onclick="setMax()">Balance: <span id="balance">0.00</span> KDA</span>
+                </label>
+                <div class="input-wrapper">
+                    <input type="number" id="amount" placeholder="0.0" step="0.01">
+                    <button class="max-btn" onclick="setMax()">MAX</button>
+                    <div class="token-badge">
+                        <div class="network-icon kadena" style="width:20px;height:20px;">K</div>
+                        KDA
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>
+                    <span>Recipient Address (L2)</span>
+                </label>
+                <div class="input-wrapper">
+                    <input type="text" id="recipient" placeholder="k:abc123...">
+                </div>
+            </div>
+
+            <div class="fee-info">
+                <div class="fee-row">
+                    <span class="label">Bridge Fee</span>
+                    <span id="bridgeFee">0.1%</span>
+                </div>
+                <div class="fee-row">
+                    <span class="label">Estimated Gas (L1)</span>
+                    <span id="l1Gas">~0.001 KDA</span>
+                </div>
+                <div class="fee-row">
+                    <span class="label">Time to Complete</span>
+                    <span id="eta">~5 minutes</span>
+                </div>
+                <div class="fee-row"
+                    style="border-top:1px solid var(--border-color);padding-top:0.5rem;margin-top:0.5rem;">
+                    <span class="label">You will receive</span>
+                    <span id="receiveAmount" style="font-weight:600;color:var(--accent-green);">0.00 KDA</span>
+                </div>
+            </div>
+
+            <button class="bridge-btn" id="bridgeBtn" onclick="initiateBridge()">
+                Connect Wallet to Bridge
+            </button>
+        </div>
+
+        <div class="recent-bridges" id="recentBridges" style="display:none;">
+            <h3>Recent Bridges</h3>
+            <div id="bridgeHistory"></div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>
+                    <div class="logo-icon" style="width:24px;height:24px;font-size:0.75rem;">⬡</div> AEGEN
+                </h3>
+                <p>The high-performance Layer-2 blockchain for Kadena.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Explorer</h4>
+                <a href="index.html">Dashboard</a>
+                <a href="bridge.html">Bridge</a>
+            </div>
+            <div class="footer-links">
+                <h4>Network</h4>
+                <a href="#">RPC: localhost:8545</a>
+                <a href="#">P2P: localhost:30303</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© 2026 Aegen Foundation. Powered by C++ Core.</div>
+    </footer>
+
+    <script src="data.js"></script>
+    <script>
+        let isDeposit = true;
+        let walletConnected = false;
+        let userBalance = 0;
+        let bridgeHistory = [];
+
+        function setMode(mode) {
+            isDeposit = mode === 'deposit';
+            document.querySelectorAll('.bridge-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateNetworkDisplay();
+            updateFees();
+        }
+
+        function swapNetworks() {
+            isDeposit = !isDeposit;
+            document.querySelectorAll('.bridge-tab').forEach((tab, i) => {
+                tab.classList.toggle('active', (i === 0) === isDeposit);
+            });
+            updateNetworkDisplay();
+        }
+
+        function updateNetworkDisplay() {
+            const from = document.getElementById('fromNetwork');
+            const to = document.getElementById('toNetwork');
+
+            if (isDeposit) {
+                from.innerHTML = '<h4>From</h4><div class="network-name"><div class="network-icon kadena">K</div>Kadena L1</div>';
+                to.innerHTML = '<h4>To</h4><div class="network-name"><div class="network-icon aegen">⬡</div>Aegen L2</div>';
+                document.getElementById('eta').textContent = '~5 minutes';
+            } else {
+                from.innerHTML = '<h4>From</h4><div class="network-name"><div class="network-icon aegen">⬡</div>Aegen L2</div>';
+                to.innerHTML = '<h4>To</h4><div class="network-name"><div class="network-icon kadena">K</div>Kadena L1</div>';
+                document.getElementById('eta').textContent = '~24 hours (challenge period)';
+            }
+        }
+
+        function setMax() {
+            document.getElementById('amount').value = userBalance;
+            updateFees();
+        }
+
+        function updateFees() {
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const fee = amount * 0.001; // 0.1%
+            const gas = 0.001;
+            const receive = amount - fee - gas;
+
+            document.getElementById('receiveAmount').textContent = receive > 0 ? receive.toFixed(4) + ' KDA' : '0.00 KDA';
+        }
+
+        document.getElementById('amount').addEventListener('input', updateFees);
+
+        async function connectWallet() {
+            // Simulate wallet connection
+            const btn = document.getElementById('connectWallet');
+            btn.textContent = 'Connecting...';
+
+            await new Promise(r => setTimeout(r, 1000));
+
+            // Generate wallet
+            const wallet = await generateWallet();
+            if (wallet) {
+                walletConnected = true;
+                userBalance = 100; // Demo balance
+
+                btn.textContent = wallet.address.substring(0, 10) + '...';
+                document.getElementById('balance').textContent = userBalance.toFixed(2);
+                document.getElementById('recipient').value = wallet.address;
+                document.getElementById('bridgeBtn').textContent = isDeposit ? 'Deposit to L2' : 'Withdraw to L1';
+                document.getElementById('recentBridges').style.display = 'block';
+
+                loadBridgeHistory();
+            }
+        }
+
+        function loadBridgeHistory() {
+            bridgeHistory = [
+                { direction: 'L1 → L2', amount: '50.00 KDA', status: 'complete', time: '2 hours ago' },
+                { direction: 'L2 → L1', amount: '25.00 KDA', status: 'pending', time: '5 mins ago' }
+            ];
+
+            document.getElementById('bridgeHistory').innerHTML = bridgeHistory.map(b => `
+                <div class="bridge-item">
+                    <div class="direction">
+                        <span>${b.direction}</span>
+                    </div>
+                    <span class="amount">${b.amount}</span>
+                    <span class="status ${b.status}">${b.status}</span>
+                    <span style="color:var(--text-muted);font-size:0.75rem;">${b.time}</span>
+                </div>
+            `).join('');
+        }
+
+        async function initiateBridge() {
+            if (!walletConnected) {
+                await connectWallet();
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('amount').value);
+            const recipient = document.getElementById('recipient').value;
+
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            if (!recipient) {
+                alert('Please enter a recipient address');
+                return;
+            }
+
+            const btn = document.getElementById('bridgeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            await new Promise(r => setTimeout(r, 2000));
+
+            // Simulate bridge transaction
+            const direction = isDeposit ? 'L1 → L2' : 'L2 → L1';
+            bridgeHistory.unshift({
+                direction,
+                amount: amount.toFixed(2) + ' KDA',
+                status: 'pending',
+                time: 'Just now'
+            });
+
+            loadBridgeHistory();
+            userBalance -= amount;
+            document.getElementById('balance').textContent = userBalance.toFixed(2);
+            document.getElementById('amount').value = '';
+            updateFees();
+
+            btn.disabled = false;
+            btn.textContent = isDeposit ? 'Deposit to L2' : 'Withdraw to L1';
+
+            alert(`Bridge initiated! ${amount} KDA ${direction}`);
+        }
+
+        document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    </script>
+</body>
+
+</html>

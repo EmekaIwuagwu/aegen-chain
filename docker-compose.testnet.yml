@@ -1,0 +1,147 @@
+# Aegen L2 - Multi-Node Testnet Docker Configuration
+# Run with: docker-compose -f docker-compose.testnet.yml up
+
+version: '3.8'
+
+x-node-common: &node-common
+  build: .
+  networks:
+    - aegen-testnet
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8545"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+
+services:
+  # Validator Node 1 (Primary)
+  validator-1:
+    <<: *node-common
+    container_name: aegen-validator-1
+    hostname: validator-1
+    ports:
+      - "8545:8545"   # RPC
+      - "30303:30303" # P2P
+    environment:
+      - AEGEN_NODE_ID=validator-1
+      - AEGEN_IS_VALIDATOR=true
+      - AEGEN_IS_LEADER=true
+      - AEGEN_RPC_PORT=8545
+      - AEGEN_P2P_PORT=30303
+      - AEGEN_PEERS=validator-2:30303,validator-3:30303
+      - AEGEN_L1_NETWORK=testnet04
+      - AEGEN_L1_CHAIN=0
+    volumes:
+      - validator1-data:/app/data
+      - validator1-logs:/app/logs
+
+  # Validator Node 2
+  validator-2:
+    <<: *node-common
+    container_name: aegen-validator-2
+    hostname: validator-2
+    ports:
+      - "8546:8545"
+      - "30304:30303"
+    environment:
+      - AEGEN_NODE_ID=validator-2
+      - AEGEN_IS_VALIDATOR=true
+      - AEGEN_IS_LEADER=false
+      - AEGEN_RPC_PORT=8545
+      - AEGEN_P2P_PORT=30303
+      - AEGEN_PEERS=validator-1:30303,validator-3:30303
+      - AEGEN_L1_NETWORK=testnet04
+      - AEGEN_L1_CHAIN=0
+    volumes:
+      - validator2-data:/app/data
+      - validator2-logs:/app/logs
+    depends_on:
+      validator-1:
+        condition: service_started
+
+  # Validator Node 3
+  validator-3:
+    <<: *node-common
+    container_name: aegen-validator-3
+    hostname: validator-3
+    ports:
+      - "8547:8545"
+      - "30305:30303"
+    environment:
+      - AEGEN_NODE_ID=validator-3
+      - AEGEN_IS_VALIDATOR=true
+      - AEGEN_IS_LEADER=false
+      - AEGEN_RPC_PORT=8545
+      - AEGEN_P2P_PORT=30303
+      - AEGEN_PEERS=validator-1:30303,validator-2:30303
+      - AEGEN_L1_NETWORK=testnet04
+      - AEGEN_L1_CHAIN=0
+    volumes:
+      - validator3-data:/app/data
+      - validator3-logs:/app/logs
+    depends_on:
+      validator-1:
+        condition: service_started
+
+  # Block Explorer
+  explorer:
+    image: nginx:alpine
+    container_name: aegen-explorer
+    ports:
+      - "3000:80"
+    volumes:
+      - ./explorer:/usr/share/nginx/html:ro
+    environment:
+      - AEGEN_RPC_URL=http://validator-1:8545
+    depends_on:
+      - validator-1
+    networks:
+      - aegen-testnet
+
+  # Prometheus Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aegen-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - aegen-testnet
+    depends_on:
+      - validator-1
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aegen-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - aegen-testnet
+    depends_on:
+      - prometheus
+
+networks:
+  aegen-testnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  validator1-data:
+  validator1-logs:
+  validator2-data:
+  validator2-logs:
+  validator3-data:
+  validator3-logs:
+  prometheus-data:
+  grafana-data:

@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  aegen-node-1:
+    build: .
+    container_name: aegen-node-1
+    ports:
+      - "8545:8545"
+      - "30303:30303"
+    environment:
+      - AEGEN_NODE_ID=node-1
+      - AEGEN_RPC_PORT=8545
+      - AEGEN_P2P_PORT=30303
+      - AEGEN_IS_VALIDATOR=true
+      - AEGEN_PEERS=aegen-node-2:30304,aegen-node-3:30305
+    networks:
+      - aegen-network
+    volumes:
+      - node1-data:/app/data
+
+  aegen-node-2:
+    build: .
+    container_name: aegen-node-2
+    ports:
+      - "8546:8545"
+      - "30304:30303"
+    environment:
+      - AEGEN_NODE_ID=node-2
+      - AEGEN_RPC_PORT=8545
+      - AEGEN_P2P_PORT=30303
+      - AEGEN_IS_VALIDATOR=true
+      - AEGEN_PEERS=aegen-node-1:30303,aegen-node-3:30305
+    networks:
+      - aegen-network
+    volumes:
+      - node2-data:/app/data
+    depends_on:
+      - aegen-node-1
+
+  aegen-node-3:
+    build: .
+    container_name: aegen-node-3
+    ports:
+      - "8547:8545"
+      - "30305:30303"
+    environment:
+      - AEGEN_NODE_ID=node-3
+      - AEGEN_RPC_PORT=8545
+      - AEGEN_P2P_PORT=30303
+      - AEGEN_IS_VALIDATOR=true
+      - AEGEN_PEERS=aegen-node-1:30303,aegen-node-2:30304
+    networks:
+      - aegen-network
+    volumes:
+      - node3-data:/app/data
+    depends_on:
+      - aegen-node-1
+      - aegen-node-2
+
+networks:
+  aegen-network:
+    driver: bridge
+
+volumes:
+  node1-data:
+  node2-data:
+  node3-data:

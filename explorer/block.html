@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Details | AEGEN SCAN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .connection-status {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">⬡</div>
+            AEGEN<span>SCAN</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html">Dashboard</a>
+            <a href="blocks.html" class="active">Blocks</a>
+            <a href="transactions.html">Transactions</a>
+        </div>
+        <div class="search-box">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="text" placeholder="Search Blocks, Txs, or Addresses...">
+        </div>
+    </nav>
+
+    <div class="connection-status" id="connectionStatus">Loading...</div>
+
+    <div class="container">
+        <div class="page-header">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <a href="blocks.html">Blocks</a> / <span id="blockNum">Block</span>
+            </div>
+        </div>
+
+        <div class="detail-card" style="margin-bottom: 1.5rem;">
+            <div class="detail-header">
+                <div class="icon block">⬡</div>
+                <div>
+                    <h2 id="blockTitle">Block #0</h2>
+                    <p id="blockTime" class="loading">Loading...</p>
+                </div>
+            </div>
+            <div class="detail-body">
+                <div class="detail-row">
+                    <span class="detail-label">Block Height</span>
+                    <span class="detail-value" id="detailHeight">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Block Hash</span>
+                    <span class="detail-value hash" id="detailHash">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Parent Hash</span>
+                    <span class="detail-value hash" id="detailParent">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">State Root</span>
+                    <span class="detail-value hash" id="detailStateRoot">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Transactions</span>
+                    <span class="detail-value" id="detailTxCount">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Gas Used / Limit</span>
+                    <span class="detail-value" id="detailGas">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Validator</span>
+                    <span class="detail-value" id="detailValidator">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Timestamp</span>
+                    <span class="detail-value" id="detailTimestamp">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M2 4h12M2 8h8M2 12h10" />
+                    </svg>
+                    Transactions in this Block
+                </div>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tx Hash</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="blockTxs">
+                    <tr>
+                        <td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>
+                    <div class="logo-icon" style="width:24px;height:24px;font-size:0.75rem;">⬡</div> AEGEN
+                </h3>
+                <p>The high-performance Layer-2 blockchain for Kadena.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Explorer</h4>
+                <a href="index.html">Dashboard</a>
+                <a href="blocks.html">All Blocks</a>
+                <a href="transactions.html">All Transactions</a>
+            </div>
+            <div class="footer-links">
+                <h4>Network</h4>
+                <a href="#">RPC: localhost:8545</a>
+                <a href="#">P2P: localhost:30303</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© 2026 Aegen Foundation. Powered by C++ Core.</div>
+    </footer>
+
+    <script src="data.js"></script>
+    <script>
+        function formatAddress(addr) {
+            if (addr && addr.startsWith('k:')) return addr.substring(0, 10) + '...' + addr.substring(addr.length - 6);
+            return addr || '';
+        }
+
+        async function loadBlockDetails() {
+            const height = getUrlParam('height');
+            if (!height) {
+                window.location = 'blocks.html';
+                return;
+            }
+
+            document.getElementById('blockNum').textContent = 'Block ' + height;
+            document.getElementById('blockTitle').textContent = 'Block #' + height;
+
+            try {
+                const block = await fetchBlock(parseInt(height));
+
+                if (block) {
+                    document.getElementById('connectionStatus').textContent = '● Connected to RPC';
+                    document.getElementById('connectionStatus').className = 'connection-status connected';
+
+                    document.getElementById('blockTime').textContent = block.timestampFull || block.timestamp;
+                    document.getElementById('blockTime').classList.remove('loading');
+
+                    document.getElementById('detailHeight').textContent = block.height;
+                    document.getElementById('detailHash').textContent = block.hash;
+                    document.getElementById('detailParent').textContent = block.parentHash;
+                    document.getElementById('detailStateRoot').textContent = block.stateRoot;
+                    document.getElementById('detailTxCount').textContent = block.txCount;
+                    document.getElementById('detailGas').textContent = (block.gasUsed || 0).toLocaleString() + ' / ' + (block.gasLimit || 100000).toLocaleString();
+                    document.getElementById('detailValidator').textContent = block.validator;
+                    document.getElementById('detailTimestamp').textContent = block.timestampFull || block.timestamp;
+
+                    // Render transactions
+                    const txs = block.transactions || [];
+                    if (txs.length > 0) {
+                        document.getElementById('blockTxs').innerHTML = txs.map(tx => `
+                            <tr onclick="window.location='transaction.html?hash=${tx.hash}'" style="cursor:pointer;">
+                                <td style="color:var(--accent-cyan);font-family:monospace;">${tx.hash.substring(0, 20)}...</td>
+                                <td style="font-family:monospace;">${formatAddress(tx.from)}</td>
+                                <td style="font-family:monospace;">${formatAddress(tx.to)}</td>
+                                <td><strong>${tx.amount} AE</strong></td>
+                                <td><span class="status-badge">${tx.status || 'Success'}</span></td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        document.getElementById('blockTxs').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No transactions in this block</td></tr>';
+                    }
+                } else {
+                    throw new Error('Block not found');
+                }
+            } catch (e) {
+                document.getElementById('connectionStatus').textContent = '○ RPC Disconnected';
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+
+                // Use fallback
+                const block = getBlockByHeight(parseInt(height));
+                document.getElementById('blockTime').textContent = block.timestampFull;
+                document.getElementById('blockTime').classList.remove('loading');
+                document.getElementById('detailHeight').textContent = block.height;
+                document.getElementById('detailHash').textContent = block.hash;
+                document.getElementById('detailParent').textContent = block.parentHash;
+                document.getElementById('detailStateRoot').textContent = block.stateRoot;
+                document.getElementById('detailTxCount').textContent = block.txCount;
+                document.getElementById('detailGas').textContent = block.gasUsed.toLocaleString() + ' / ' + block.gasLimit.toLocaleString();
+                document.getElementById('detailValidator').textContent = block.validator;
+                document.getElementById('detailTimestamp').textContent = block.timestampFull;
+
+                const txs = getBlockTransactions(height);
+                document.getElementById('blockTxs').innerHTML = txs.map(tx => `
+                    <tr onclick="window.location='transaction.html?hash=${tx.hash}'" style="cursor:pointer;">
+                        <td style="color:var(--accent-cyan);font-family:monospace;">${tx.hash.substring(0, 20)}...</td>
+                        <td style="font-family:monospace;">${formatAddress(tx.from)}</td>
+                        <td style="font-family:monospace;">${formatAddress(tx.to)}</td>
+                        <td><strong>${tx.amount} AE</strong></td>
+                        <td><span class="status-badge">${tx.status}</span></td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        loadBlockDetails();
+    </script>
+</body>
+
+</html>
