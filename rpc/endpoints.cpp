@@ -84,13 +84,18 @@ std::string extractJsonValue(const std::string& json, const std::string& key) {
 }
 
 std::string RPCEndpoints::handleSendTransaction(const std::string& json) {
+    // Accept both "from/to" and "sender/receiver" param names
     Address sender = extractJsonValue(json, "sender");
+    if (sender.empty()) sender = extractJsonValue(json, "from");
+    
     Address receiver = extractJsonValue(json, "receiver");
+    if (receiver.empty()) receiver = extractJsonValue(json, "to");
+    
     std::string amtStr = extractJsonValue(json, "amount");
     std::string nonceStr = extractJsonValue(json, "nonce");
     
     if (sender.empty() || receiver.empty() || amtStr.empty()) 
-        return "{\"error\": \"Invalid params\"}";
+        return "{\"error\": \"Invalid params - need from/to/amount or sender/receiver/amount\"}";
 
     Transaction tx;
     tx.sender = sender;
