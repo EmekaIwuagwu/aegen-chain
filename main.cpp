@@ -35,12 +35,13 @@ int main() {
     std::cout << "[INIT] Starting Aegen Node..." << std::endl;
 
     // 1. Initialize Core Components
-    RocksDBWrapper dbWrapper("aegen_chain_db");
+    std::string dataDir = "aegen_data";
+    RocksDBWrapper dbWrapper(dataDir + "/state");
     StateManager stateManager(dbWrapper);
     Mempool mempool;
     ExecutionEngine execEngine(stateManager);
     TokenManager tokenManager;
-    BlockStore blockStore;  // NEW: Store finalized blocks
+    BlockStore blockStore(dataDir);  // Persistent block storage
     RPCServer rpcServer;
 
     // 2. Setup RPC Endpoints (now with TokenManager and BlockStore)
