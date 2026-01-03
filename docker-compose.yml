@@ -57,6 +57,22 @@ services:
       - aegen-node-1
       - aegen-node-2
 
+  relayer:
+    image: node:18-alpine
+    container_name: aegen-relayer
+    working_dir: /app
+    volumes:
+      - ./aegen-wallet-web/relayer.js:/app/relayer.js
+    command: node relayer.js
+    ports:
+      - "3001:3001"
+    environment:
+      - AEGEN_RPC=http://aegen-node-1:8545
+    networks:
+      - aegen-network
+    depends_on:
+      - aegen-node-1
+
 networks:
   aegen-network:
     driver: bridge

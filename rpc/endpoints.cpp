@@ -43,6 +43,9 @@ void RPCEndpoints::registerAll() {
     server.registerEndpoint("mint", [this](const std::string& json) {
         return this->handleMintToken(json);
     });
+    server.registerEndpoint("bridgeDeposit", [this](const std::string& json) {
+        return this->handleBridgeDeposit(json);
+    });
     
     // Explorer Endpoints
     server.registerEndpoint("getBlocks", [this](const std::string& json) {
@@ -446,6 +449,41 @@ std::string RPCEndpoints::handleGetTransaction(const std::string& json) {
     }
     
     return "{\"error\": \"Transaction not found\"}";
+}
+
+std::string RPCEndpoints::handleBridgeDeposit(const std::string& json) {
+    std::string l1Hash = extractJsonValue(json, "l1Hash");
+    std::string amountStr = extractJsonValue(json, "amount");
+    Address receiver = extractJsonValue(json, "receiver");
+    std::string token = extractJsonValue(json, "token");
+    
+    if (l1Hash.empty() || amountStr.empty() || receiver.empty() || token.empty())
+        return "{\"error\": \"Missing params: l1Hash, amount, receiver, token\"}";
+        
+    // Replay Protection
+    if (processedBridgeTxs.count(l1Hash))
+        return "{\"error\": \"Duplicate Deposit: Transaction already processed\"}";
+        
+    processedBridgeTxs.insert(l1Hash);
+    
+    uint64_t amount = std::stoull(amountStr);
+    
+    // In a real implementation, we would verify the SPV proof here.
+    // For this local environment, we trust the Relayer.
+    
+    // We use a special Bridge Authority address
+    std::string bridgeAuth = "k:BRIDGE_AUTHORITY"; 
+    
+    if (tokenManager.mint(token, receiver, amount, bridgeAuth)) {
+         return "{\"result\": {\"status\": \"success\", \"tx\": \"" + l1Hash + "\"}}";
+    }
+    
+    // Fallback: Try minting as receiver (if self-mintable)
+    if (tokenManager.mint(token, receiver, amount, receiver)) {
+         return "{\"result\": {\"status\": \"success\", \"tx\": \"" + l1Hash + "\"}}";
+    }
+
+    return "{\"error\": \"Bridge Mint failed - Authorization Error\"}";
 }
 
 std::string RPCEndpoints::handleGenerateWallet(const std::string& json) {

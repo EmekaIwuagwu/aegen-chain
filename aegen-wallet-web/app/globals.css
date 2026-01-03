@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --background: #0a0e1a;
+    /* Deep Space */
+    --foreground: #f8fafc;
+    /* Slate 50 */
+}
+
+@layer base {
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+}
+
+@layer utilities {
+    .glass-card {
+        @apply bg-slate-900/60 backdrop-blur-xl border border-slate-800/50 shadow-xl;
+    }
+
+    .text-gradient {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-violet-500;
+    }
+}

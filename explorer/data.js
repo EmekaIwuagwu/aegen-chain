@@ -2,9 +2,12 @@
 // Fetches real data from the blockchain RPC
 
 // Auto-detect RPC URL: Use same host as explorer but port 8545
-const RPC_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+// Auto-detect RPC URL (Robust Fix)
+let rpcHost = window.location.hostname;
+if (!rpcHost) rpcHost = '138.68.65.46';
+const RPC_URL = rpcHost === 'localhost' || rpcHost === '127.0.0.1'
     ? 'http://localhost:8545'
-    : `http://${window.location.hostname}:8545`;
+    : `http://${rpcHost}:8545`;
 
 // RPC Helper
 async function rpcCall(method, params = {}) {

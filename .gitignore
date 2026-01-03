@@ -50,3 +50,10 @@ validator*-data/
 validator*-logs/
 prometheus-data/
 grafana-data/
+
+# Node.js
+**/node_modules
+**/npm-debug.log
+**/.next
+**/dist
+.env.local

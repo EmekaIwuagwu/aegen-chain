@@ -31,6 +31,10 @@ public:
     std::string handleGetTokenBalance(const std::string& json);
     std::string handleListTokens(const std::string& json);
     std::string handleMintToken(const std::string& json);
+    std::string handleBridgeDeposit(const std::string& json); // Cross-chain bridge
+
+private:
+    std::set<std::string> processedBridgeTxs; // Replay protection
     
     // Explorer Handlers
     std::string handleGetBlocks(const std::string& json);
