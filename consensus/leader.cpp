@@ -26,7 +26,7 @@ Block Leader::proposeBlock(uint64_t height, uint64_t previousTimestamp, const Ha
         Transaction tx = mempool.pop();
         if (executionEngine.validateTransaction(tx)) {
              // Execute to update state
-             executionEngine.applyTransaction(tx);
+             executionEngine.applyTransaction(tx, nodeAddress);
              block.addTransaction(tx);
              count++;
         } else {

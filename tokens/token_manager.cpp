@@ -96,7 +96,9 @@ TransferResult TokenManager::transferCreate(const TokenId& token, const Address&
 }
 
 bool TokenManager::rotateGuard(const TokenId& token, const Address& account, const Address& newGuard) {
-    // Placeholder for guard rotation (Pact keyset management)
+    // Store guard (keyset) for account - used for authorization in Pact
+    std::string key = "guard:" + token + ":" + account;
+    guards[key] = newGuard;
     return true;
 }
 

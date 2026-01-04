@@ -105,23 +105,24 @@ void PBFT::onPrePrepare(const Block& block) {
     vote.approve = true;
     
     {
-        std::lock_guard<std::mutex> lock(voteMutex);
+    std::lock_guard<std::recursive_mutex> lock(voteMutex);
+        pendingBlocks[block.calculateHash()] = block;
         prepareVotes[vote.blockHash].push_back(vote);
     }
     
-    if (broadcastVote) broadcastVote(vote);
+    if (broadcastVote) broadcastVote(vote, "PREPARE");
 }
 
 void PBFT::onPrepare(const Vote& vote) {
-    std::lock_guard<std::mutex> lock(voteMutex);
+    std::lock_guard<std::recursive_mutex> lock(voteMutex);
     
     // SECURITY FIX: Persist vote before processing
     persistVote("PREPARE", vote);
     
     prepareVotes[vote.blockHash].push_back(vote);
     
-    std::cout << "[PBFT] PREPARE votes for block: " << prepareVotes[vote.blockHash].size() 
-              << "/" << quorumSize() << std::endl;
+    // Debug log
+    // std::cout << "[PBFT] PREPARE count: " << prepareVotes[vote.blockHash].size() << std::endl;
     
     if (hasPrepareQuorum(vote.blockHash) && state == ConsensusState::PREPARE) {
         state = ConsensusState::COMMIT;
@@ -136,28 +137,30 @@ void PBFT::onPrepare(const Vote& vote) {
         persistVote("COMMIT", commitVote);
         commitVotes[vote.blockHash].push_back(commitVote);
         
-        if (broadcastVote) broadcastVote(commitVote);
+        if (broadcastVote) broadcastVote(commitVote, "COMMIT");
     }
 }
 
 void PBFT::onCommit(const Vote& vote) {
-    std::lock_guard<std::mutex> lock(voteMutex);
+    std::lock_guard<std::recursive_mutex> lock(voteMutex);
     
     // SECURITY FIX: Persist vote before processing
     persistVote("COMMIT", vote);
     
     commitVotes[vote.blockHash].push_back(vote);
     
-    std::cout << "[PBFT] COMMIT votes for block: " << commitVotes[vote.blockHash].size() 
-              << "/" << quorumSize() << std::endl;
-    
     if (hasCommitQuorum(vote.blockHash) && state == ConsensusState::COMMIT) {
         state = ConsensusState::FINALIZED;
         std::cout << "[PBFT] Block FINALIZED with 2/3 consensus!" << std::endl;
         
+        if (onBlockFinalized && pendingBlocks.count(vote.blockHash)) {
+            onBlockFinalized(pendingBlocks[vote.blockHash]);
+        }
+        
         // Clear votes for this block
         prepareVotes.erase(vote.blockHash);
         commitVotes.erase(vote.blockHash);
+        pendingBlocks.erase(vote.blockHash);
         
         state = ConsensusState::IDLE;
     }

@@ -39,7 +39,7 @@ bool Validator::validateBlock(const Block& block) {
             std::cerr << "Block contains invalid tx: " << crypto::to_hex(tx.hash) << std::endl;
             return false;
         }
-        executionEngine.applyTransaction(tx);
+        executionEngine.applyTransaction(tx, block.header.producer);
     }
 
     // 4. Verify Roots

@@ -18,8 +18,11 @@
 | **10,000+ TPS** | High throughput with 5-second block finality |
 | **Kadena k: Addresses** | Native Kadena account format |
 | **fungible-v2 Tokens** | Pact-compatible token standard |
+| **EVM Execution** | Full EVM with opcodes, storage, logs, receipts |
 | **PBFT Consensus** | Byzantine fault tolerant consensus |
 | **L1 Settlement** | Pact contract for batch submissions with fraud proofs |
+| **Fee Market** | Gas-based transaction fees paid to validators |
+| **ZK Precompile** | Groth16 proof verification at address 0x09 |
 | **Data Availability** | Erasure coding and DAS (Data Availability Sampling) |
 | **Cross-Chain Bridge** | UI for depositing/withdrawing assets |
 | **Production Monitoring** | Prometheus + Grafana dashboards |
@@ -137,6 +140,16 @@ L2 Blocks → BatchManager → SettlementBridge → KadenaClient → Chainweb AP
 | `getTransaction` | Transaction details by hash |
 | `getMetrics` | Prometheus metrics |
 
+### Ethereum JSON-RPC (EVM Compatibility)
+| Method | Description |
+|--------|-------------|
+| `eth_chainId` | Returns chain ID (0x1e) |
+| `eth_blockNumber` | Returns current block height |
+| `eth_getBalance` | Get EVM account balance |
+| `eth_call` | Execute read-only contract call |
+| `eth_sendRawTransaction` | Submit signed transaction |
+| `eth_getTransactionReceipt` | Get transaction receipt with logs |
+
 ### Example Request
 ```bash
 curl -X POST http://localhost:8545 \
@@ -210,6 +223,15 @@ aegen-blockchain/
 ./build/tests/Debug/unit_execution_test.exe
 ```
 
+### End-to-End Test
+```bash
+# Start node first
+./build/Debug/aegen-node.exe --node node-1
+
+# In another terminal
+python tests/e2e_test.py
+```
+
 ### Integration Test
 ```bash
 python integration_test.py
@@ -217,13 +239,15 @@ python integration_test.py
 
 ### Test Coverage
 - ✅ Block production & validation
-- ✅ PBFT consensus
-- ✅ Transaction execution
+- ✅ PBFT consensus (single and multi-node)
+- ✅ Transaction execution with fee market
+- ✅ EVM opcodes (arithmetic, storage, logs)
 - ✅ fungible-v2 token operations
 - ✅ Wallet key generation & signing
 - ✅ Address validation (k: format)
-- ✅ RPC endpoints
+- ✅ RPC endpoints (native + eth_*)
 - ✅ L1 settlement batching
+- ✅ Transaction receipts with logs
 
 ---
 

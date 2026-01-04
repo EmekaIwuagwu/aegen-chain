@@ -17,6 +17,15 @@ public:
     
     AccountState getAccountState(const Address& addr);
     void setAccountState(const Address& addr, const AccountState& state);
+    
+    // Contract Storage Support
+    std::string getContractStorage(const std::string& contractAddr, const std::string& key);
+    void setContractStorage(const std::string& contractAddr, const std::string& key, const std::string& value);
+
+    // Code Support
+    std::string getContractCode(const std::string& contractAddr);
+    void setContractCode(const std::string& contractAddr, const std::string& code);
+
     void commit();
     void rollback();
     Hash getRootHash();

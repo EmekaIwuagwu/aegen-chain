@@ -1,6 +1,7 @@
 #include "endpoints.h"
 #include "util/crypto.h"
 #include "wallet/keypair.h"
+#include "exec/execution_engine.h"
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -8,6 +9,8 @@
 #include <vector>
 
 namespace aegen {
+
+std::string extractJsonValue(const std::string& json, const std::string& key);
 
 RPCEndpoints::RPCEndpoints(Mempool& mp, StateManager& sm, TokenManager& tm, RPCServer& srv) 
     : mempool(mp), stateManager(sm), tokenManager(tm), server(srv) {}
@@ -26,6 +29,14 @@ void RPCEndpoints::registerAll() {
     server.registerEndpoint("getNonce", [this](const std::string& json) {
         return this->handleGetNonce(json);
     });
+    
+    // Ethereum JSON-RPC Compatibility
+    server.registerEndpoint("eth_chainId", [this](const std::string& js) { return this->handleEthChainId(js); });
+    server.registerEndpoint("eth_blockNumber", [this](const std::string& js) { return this->handleEthBlockNumber(js); });
+    server.registerEndpoint("eth_getBalance", [this](const std::string& js) { return this->handleEthGetBalance(js); });
+    server.registerEndpoint("eth_call", [this](const std::string& js) { return this->handleEthCall(js); });
+    server.registerEndpoint("eth_getTransactionReceipt", [this](const std::string& js) { return this->handleEthGetTransactionReceipt(js); });
+    server.registerEndpoint("eth_sendRawTransaction", [this](const std::string& js) { return this->handleEthSendRawTransaction(js); });
     
     // Pact fungible-v2 Token Operations
     server.registerEndpoint("createFungible", [this](const std::string& json) {
@@ -71,6 +82,169 @@ void RPCEndpoints::registerAll() {
     server.registerEndpoint("health", [this](const std::string& json) {
         return "{\"status\": \"healthy\", \"version\": \"1.0.0\"}";
     });
+}
+
+std::string RPCEndpoints::handleEthChainId(const std::string& json) {
+    return "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x1e\"}"; // 30
+}
+
+std::string RPCEndpoints::handleEthBlockNumber(const std::string& json) {
+    uint64_t h = blockStore ? blockStore->getHeight() : 0;
+    std::stringstream ss;
+    ss << "0x" << std::hex << h;
+    return "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"" + ss.str() + "\"}"; 
+}
+
+std::string RPCEndpoints::handleEthGetBalance(const std::string& json) {
+    // Hacky parse for array params or string param
+    std::string addr;
+    size_t xPos = json.find("0x");
+    if (xPos != std::string::npos) {
+        size_t end = json.find_first_of("\"' \t\n,]", xPos); 
+        if (end == std::string::npos) end = json.length();
+        addr = json.substr(xPos, end - xPos);
+    }
+    
+    AccountState st = stateManager.getAccountState(addr);
+    std::stringstream ss;
+    ss << "0x" << std::hex << st.balance;
+    return "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"" + ss.str() + "\"}";
+}
+
+std::string RPCEndpoints::handleEthCall(const std::string& json) {
+    if (!executionEngine) return "{\"error\": \"Execution Engine not available\"}";
+
+    // Parse 'to' and 'data' from 'params' inside JSON
+    // Standard eth_call: { "jsonrpc": "2.0", "result": ..., "params": [{ "to": "...", "data": "..." }, "latest"] }
+    // extractJsonValue works on keys.
+    std::string to = extractJsonValue(json, "to");
+    std::string data = extractJsonValue(json, "data");
+    std::string from = extractJsonValue(json, "from"); 
+    
+    Transaction tx;
+    tx.sender = from.empty() ? "0x0000000000000000000000000000000000000000" : from;
+    tx.receiver = to;
+    if (!data.empty()) {
+        if (data.rfind("0x", 0) == 0) data = data.substr(2);
+        tx.data = crypto::from_hex(data);
+    }
+    tx.amount = 0; 
+    tx.nonce = 0;
+    tx.gasLimit = 1000000; 
+    
+    std::string res = executionEngine->simulateTransaction(tx);
+    return "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x" + res + "\"}";
+}
+
+std::string RPCEndpoints::handleEthGetTransactionReceipt(const std::string& json) {
+    if (!executionEngine) return "{\"error\": \"Execution Engine not available\"}";
+
+    // extractJsonValue hack
+    std::string hash = extractJsonValue(json, "hash");
+    if (hash.empty()) {
+         // Maybe passed as array parameter ["0x..."]
+         size_t xPos = json.find("0x");
+         if (xPos != std::string::npos) {
+            size_t end = json.find_first_of("\"' \t\n,]", xPos);
+            if (end == std::string::npos) end = json.length();
+            hash = json.substr(xPos, end - xPos);
+         }
+    }
+    
+    // Normalize hash (remove 0x)
+    if (hash.rfind("0x", 0) == 0) hash = hash.substr(2);
+    
+    auto receiptOpt = executionEngine->getReceipt(hash);
+    if (!receiptOpt) {
+        return "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":null}";
+    }
+    
+    const auto& receipt = *receiptOpt;
+    
+    std::stringstream ss;
+    ss << "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{";
+    ss << "\"transactionHash\": \"0x" << crypto::to_hex(receipt.transactionHash) << "\",";
+    ss << "\"transactionIndex\": \"0x" << std::hex << receipt.transactionIndex << "\",";
+    ss << "\"blockHash\": \"0x0000000000000000000000000000000000000000000000000000000000000000\","; // Mock
+    ss << "\"blockNumber\": \"0x" << std::hex << receipt.blockNumber << "\",";
+    ss << "\"from\": \"" << receipt.from << "\",";
+    ss << "\"to\": " << (receipt.to.empty() ? "null" : ("\"" + receipt.to + "\"")) << ",";
+    ss << "\"cumulativeGasUsed\": \"0x" << std::hex << receipt.gasUsed << "\",";
+    ss << "\"gasUsed\": \"0x" << std::hex << receipt.gasUsed << "\",";
+    
+    if (!receipt.contractAddress.empty()) {
+        ss << "\"contractAddress\": \"" << receipt.contractAddress << "\",";
+    } else {
+        ss << "\"contractAddress\": null,";
+    }
+
+    // Logs
+    ss << "\"logs\": [";
+    for (size_t i = 0; i < receipt.logs.size(); ++i) {
+        if (i > 0) ss << ",";
+        const auto& log = receipt.logs[i];
+        ss << "{";
+        ss << "\"address\": \"" << log.address << "\",";
+        ss << "\"topics\": [";
+        for (size_t j = 0; j < log.topics.size(); ++j) {
+            if (j > 0) ss << ",";
+            ss << "\"0x" << crypto::to_hex(log.topics[j]) << "\"";
+        }
+        ss << "],";
+        ss << "\"data\": \"0x" << crypto::to_hex(log.data) << "\"";
+        ss << "}";
+    }
+    ss << "],";
+    
+    ss << "\"status\": \"" << (receipt.status ? "0x1" : "0x0") << "\"";
+    ss << "}}";
+    
+    return ss.str();
+}
+
+
+std::string RPCEndpoints::handleEthSendRawTransaction(const std::string& json) {
+    // Expected: params: ["0xHEX_DATA"]
+    std::string rawHex;
+    size_t xPos = json.find("0x");
+    if (xPos != std::string::npos) {
+        size_t end = json.find_first_of("\"' \t\n,]", xPos);
+        if (end == std::string::npos) end = json.length();
+        rawHex = json.substr(xPos, end - xPos);
+    } else {
+        // Try parsing param manually if no 0x
+        rawHex = extractJsonValue(json, "params");
+        // Clean up
+        if (!rawHex.empty()) {
+             // Basic array cleanup
+             size_t start = rawHex.find('"');
+             if (start != std::string::npos) {
+                 size_t end = rawHex.find('"', start + 1);
+                 if (end != std::string::npos) {
+                     rawHex = rawHex.substr(start + 1, end - start - 1);
+                 }
+             }
+        }
+    }
+    
+    if (rawHex.empty()) return "{\"error\": \"Invalid params\"}";
+    if (rawHex.rfind("0x", 0) == 0) rawHex = rawHex.substr(2);
+    
+    try {
+        Bytes txData = crypto::from_hex(rawHex);
+        Transaction tx = Transaction::deserialize(txData);
+        
+        // Validation via ExecutionEngine
+        if (!executionEngine || !executionEngine->validateTransaction(tx)) {
+             return "{\"error\": \"Transaction validation failed\"}";
+        }
+        
+        // Add to mempool
+        mempool.add(tx);
+        return "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x" + crypto::to_hex(tx.hash) + "\"}";
+    } catch (const std::exception& e) {
+        return "{\"error\": \"Deserialization or execution error: " + std::string(e.what()) + "\"}";
+    }
 }
 
 std::string extractJsonValue(const std::string& json, const std::string& key) {
@@ -521,13 +695,16 @@ bool RPCEndpoints::verifyRelayerSignature(const std::string& relayerId, const st
 }
 
 std::string RPCEndpoints::handleGenerateWallet(const std::string& json) {
-    KeyPair kp = Wallet::generateKeyPair();
-    
+    // Manually generating keypair to avoid dependency issues with Wallet helper
+    std::vector<uint8_t> sk = crypto::generate_private_key();
+    std::vector<uint8_t> pk = crypto::derive_public_key(sk);
+    std::string addr = crypto::derive_kadena_address(pk);
+
     std::stringstream ss;
     ss << "{\"result\": {";
-    ss << "\"address\": \"" << kp.address << "\",";
-    ss << "\"publicKey\": \"" << crypto::to_hex(kp.publicKey) << "\",";
-    ss << "\"privateKey\": \"" << crypto::to_hex(kp.privateKey) << "\"";
+    ss << "\"address\": \"" << addr << "\",";
+    ss << "\"publicKey\": \"" << crypto::to_hex(pk) << "\",";
+    ss << "\"privateKey\": \"" << crypto::to_hex(sk) << "\"";
     ss << "}}";
     return ss.str();
 }

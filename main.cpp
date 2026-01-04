@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <cstring>
 #include "core/mempool.h"
 #include "db/rocksdb_wrapper.h"
 #include "db/state_manager.h"
@@ -25,7 +26,7 @@
 
 using namespace aegen;
 
-// Helper to split string by delimiter
+// Helper to split string
 std::vector<std::string> split(const std::string& s, char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
@@ -54,47 +55,30 @@ int main(int argc, char* argv[]) {
         else if(arg == "--data" && i + 1 < argc) dataDir = argv[++i];
     }
 
-    std::cout << R"(
-    ___                         
-   /   | ___  ____ ____  ____  
-  / /| |/ _ \/ __ `/ _ \/ __ \ 
- / ___ /  __/ /_/ /  __/ / / / 
-/_/  |_\___/\__, /\___/_/ /_/  
-           /____/              
-    
-  Layer-2 Blockchain on Kadena
-  ============================
-)" << std::endl;
+    std::cout << "[INIT] " << nodeId << " (RPC: " << rpcPort << ", P2P: " << p2pPort << ")" << std::endl;
 
-    std::cout << "[INIT] Starting Aegen Node (" << nodeId << ")..." << std::endl;
-
-    // 1. Initialize Core Components
+    // Core Components
     RocksDBWrapper dbWrapper(dataDir + "/state");
     StateManager stateManager(dbWrapper);
     Mempool mempool;
     ExecutionEngine execEngine(stateManager);
     TokenManager tokenManager;
-    BlockStore blockStore(dataDir);  // Persistent block storage
+    BlockStore blockStore(dataDir);
     RPCServer rpcServer;
 
-    // 2. Setup RPC Endpoints
     RPCEndpoints endpoints(mempool, stateManager, tokenManager, rpcServer);
     endpoints.setBlockStore(&blockStore);
+    endpoints.setExecutionEngine(&execEngine);
     endpoints.registerAll();
 
-    // 3. Start RPC Server
     rpcServer.start(rpcPort);
 
-    // 4. Initialize Consensus
-    // Hardcoded set of 3 validators for testing
-    std::vector<std::string> validators = {"node-1", "node-2", "node-3"};
+    // Multi-validator Setup
+    std::vector<std::string> validators = {"node-1"};
     PBFT consensus(nodeId, validators);
-
-    // 5. Setup P2P Networking
     Gossip gossip;
     gossip.start(p2pPort);
     
-    // Connect to peers
     if (!peersStr.empty()) {
         auto peersList = split(peersStr, ',');
         for (const auto& peerAddr : peersList) {
@@ -103,174 +87,179 @@ int main(int argc, char* argv[]) {
                 PeerInfo p;
                 p.host = parts[0];
                 p.port = std::stoi(parts[1]);
-                p.nodeId = "unknown"; // Will be discovered
-                p.isValidator = true;
                 gossip.addPeer(p);
             }
         }
     }
 
-    // 6. Setup Settlement Bridge
     BatchManager batchManager;
     KadenaClient kadenaClient;
     SettlementBridge bridge(kadenaClient);
 
-    // 7. Initialize Leader
     KeyPair leaderKeys = Wallet::generateKeyPair();
     Leader leader(mempool, execEngine, stateManager, leaderKeys, leaderKeys.address);
 
-    // 8. Genesis State
+    // Genesis
     stateManager.setAccountState("alice", {0, 10000000});
     stateManager.setAccountState("bob", {0, 10000000});
     TokenId genesisToken = tokenManager.createFungible("Aegen Token", "AE", 12, 1000000000, "k:genesis");
     
-    // Create Genesis Block if not exists
     Block genesisBlock;
     genesisBlock.header.height = 0;
-    genesisBlock.header.timestamp = 1704351600; // Fixed timestamp for consistency
+    genesisBlock.header.timestamp = 1704351600;
     genesisBlock.header.previousHash = {};
     genesisBlock.header.stateRoot = stateManager.getRootHash();
     genesisBlock.header.producer = "genesis";
-    
     Hash genesisHash = genesisBlock.calculateHash();
-    // Assuming mocked signature for genesis to ensure all nodes match exactly
-    // In production, genesis is hardcoded.
-    
     blockStore.addBlock(genesisBlock);
-    
-    std::cout << "\n[GENESIS] State initialized:" << std::endl;
-    // std::cout << "  - Root: " << crypto::to_hex(genesisBlock.header.stateRoot) << std::endl;
-    std::cout << "\n[READY] Node running on:" << std::endl;
-    std::cout << "  - RPC: http://localhost:" << rpcPort << std::endl;
-    std::cout << "  - P2P: port " << p2pPort << std::endl;
 
-    // Chain State
+    // Chain State protected by mutex
+    std::mutex chainMutex;
     uint64_t height = 1;
     Hash prevHash = genesisHash;
     uint64_t lastBlockTime = std::time(nullptr);
-    std::mutex chainMutex;
-    
+
+    // ------------------------------------------------------------------------
     // Consensus Wiring
-    // When we need to broadcast a vote (PREPARE/COMMIT)
-    consensus.broadcastVote = [&](const Vote& vote) {
+    // ------------------------------------------------------------------------
+
+    // 1. Broadcast Vote (Outbound)
+    consensus.broadcastVote = [&](const Vote& vote, const std::string& type) {
         NetworkMessage msg;
         msg.type = MessageType::VOTE;
         msg.timestamp = std::time(nullptr);
         msg.senderId = nodeId;
         
-        // Simple serialization: type|voter|hash|approve
+        // Serialize: TYPE|VOTER|HASH|APPROVE
         std::stringstream ss;
-        // 0=Prepare, 1=Commit (implied by context usually, but here we might need to be explicit if Vote struct doesn't have type)
-        // PBFT::Vote doesn't have 'type' field in the struct definition I saw earlier, 
-        // but PBFT.h has persistVote(type, vote).
-        // Let's assume we send generic vote and receiver infers, or we prepend type.
-        // For simplicity, we just broadcast. Receiver will have to handle.
-        
-        ss << vote.voterId << "|" << crypto::to_hex(vote.blockHash) << "|" << vote.approve;
+        ss << type << "|" << vote.voterId << "|" << crypto::to_hex(vote.blockHash) << "|" << (vote.approve ? "1" : "0");
         msg.payload = ss.str();
         
         gossip.broadcast(msg);
+        
+        // Loopback for self-consensus/local processing
+        if (type == "PREPARE") consensus.onPrepare(vote);
+        else if (type == "COMMIT") consensus.onCommit(vote);
     };
 
-    // Handle incoming P2P messages
-    gossip.setMessageHandler([&](const NetworkMessage& msg) {
-        if (msg.type == MessageType::VOTE) {
-            // Parse vote
-            auto parts = split(msg.payload, '|');
-            if (parts.size() >= 3) {
-                Vote v;
-                v.voterId = parts[0];
-                auto hashBytes = crypto::from_hex(parts[1]);
-                if (hashBytes.size() == 32) {
-                    std::copy(hashBytes.begin(), hashBytes.end(), v.blockHash.begin());
-                }
-                v.approve = (parts[2] == "1");
-                
-                // We blindly pass to onPrepare AND onCommit because we didn't serialize the phase
-                // In a real impl, we'd include the phase in the message type or payload
-                consensus.onPrepare(v);
-                consensus.onCommit(v);
+    // 2. Block Finalized (Consensus Reached) - Update State
+    consensus.onBlockFinalized = [&](const Block& block) {
+        std::lock_guard<std::mutex> lock(chainMutex);
+        
+        // Only verify height order (prevent replays)
+        // If we kept `height` strictly, ensure block.header.height == height
+        
+        if (block.header.height >= height) {
+            std::cout << "[CONSENSUS] Finalized Block " << block.header.height << "!" << std::endl;
+            
+            blockStore.addBlock(block); // Persistence
+            
+            // Execute batching
+            if (block.transactions.size() > 0) {
+                 batchManager.addBlock(block);
+                 
+                 if (batchManager.shouldBatch()) {
+                     std::cout << "[BATCH] Batch threshold reached. Triggering L1 Settlement..." << std::endl;
+                     auto batch = batchManager.createBatch();
+                     
+                     // Run in detached thread to avoid blocking consensus
+                     std::thread([&bridge, batch]() {
+                        bridge.settleBatch(batch);
+                     }).detach();
+                 }
             }
+            
+            // Update Chain Tip
+            // Warning: If we missed blocks, just jumping height is unsafe without state replay.
+            // For this testnet, we assume sequential.
+            height = block.header.height + 1; 
+            prevHash = block.calculateHash();
+            lastBlockTime = block.header.timestamp;
         }
-        else if (msg.type == MessageType::BLOCK) {
-            // Received a block announcement - Sync logic
-            try {
+    };
+
+    // 3. Incoming Messages (Inbound)
+    gossip.setMessageHandler([&](const NetworkMessage& msg) {
+        try {
+            if (msg.type == MessageType::VOTE) {
+                // Parse: TYPE|VOTER|HASH|APPROVE
+                auto parts = split(msg.payload, '|');
+                if (parts.size() >= 4) {
+                    std::string type = parts[0];
+                    Vote v;
+                    v.voterId = parts[1];
+                    auto hashBytes = crypto::from_hex(parts[2]);
+                    if (hashBytes.size() == 32) {
+                         std::copy(hashBytes.begin(), hashBytes.end(), v.blockHash.begin());
+                    }
+                    v.approve = (parts[3] == "1");
+
+                    if (type == "PREPARE") consensus.onPrepare(v);
+                    else if (type == "COMMIT") consensus.onCommit(v);
+                }
+            }
+            else if (msg.type == MessageType::BLOCK) {
+                // Proposed Block
                 std::vector<uint8_t> blockData = crypto::from_hex(msg.payload);
                 Block block = Block::deserialize(blockData);
                 
-                std::cout << "[SYNC] Received Block " << block.header.height << std::endl;
-                
-                // Simple sync: if it's the next block, take it
-                std::lock_guard<std::mutex> lock(chainMutex);
-                if (block.header.height == height) {
-                    blockStore.addBlock(block);
-                    prevHash = block.calculateHash();
-                    lastBlockTime = block.header.timestamp;
-                    height++;
-                    std::cout << "[SYNC] Synced to height " << height << " (State Root: " 
-                              << crypto::to_hex(block.header.stateRoot).substr(0,16) << "...)" << std::endl;
+                // std::cout << "[NET] Received Block Proposal " << block.header.height << std::endl;
+
+                // Validate and Start Consensus
+                // Only participate if it matches our expected next height
+                // LOCK to check height
+                {
+                    std::lock_guard<std::mutex> lock(chainMutex);
+                    if (block.header.height != height) {
+                        // Ignore future/past blocks for now
+                        return;
+                    }
                 }
-            } catch (const std::exception& e) {
-                std::cout << "[SYNC] Error processing block: " << e.what() << std::endl;
+                
+                // Trigger PBFT (This will vote PREPARE)
+                consensus.onPrePrepare(block); 
             }
+        } catch (const std::exception& e) {
+            std::cout << "[NET] Error handling message: " << e.what() << std::endl;
         }
     });
 
-
-
-    // Main Loop
+    // ------------------------------------------------------------------------
+    // Main Loop (Block Production)
+    // ------------------------------------------------------------------------
     while(true) {
         bool shouldProduce = false;
         
-        // Only produce if I am the leader for this height
-        if (consensus.isLeader(height)) {
-            if (mempool.size() > 0) {
-                shouldProduce = true;
-            } else {
-                uint64_t now = std::time(nullptr);
-                if (now - lastBlockTime >= 10) {
-                    shouldProduce = true; // Heartbeat
+        {
+            std::lock_guard<std::mutex> lock(chainMutex);
+            if (consensus.isLeader(height) && consensus.getState() == ConsensusState::IDLE) {
+                // Heartbeat condition
+                if (mempool.size() > 0 || (std::time(nullptr) - lastBlockTime >= 10)) {
+                    shouldProduce = true;
                 }
             }
         }
         
         if (shouldProduce) {
-            std::cout << "\n[BLOCK " << height << "] I am Leader (" << nodeId << "). Producing block..." << std::endl;
+            // Need snapshot of state to produce
+            Hash parentHash;
+            uint64_t targetHeight;
+            uint64_t parentTime;
+            {
+               std::lock_guard<std::mutex> lock(chainMutex); 
+               parentHash = prevHash;
+               targetHeight = height;
+               parentTime = lastBlockTime;
+            }
+
+            std::cout << "\n[PROPOSER] I am Leader (" << nodeId << "). Proposing Block " << targetHeight << "..." << std::endl;
+            Block block = leader.proposeBlock(targetHeight, parentTime, parentHash);
             
-            Block block = leader.proposeBlock(height, lastBlockTime, prevHash);
-            
-            // PBFT Flow
-            consensus.onPrePrepare(block);
-            
-            // In a real network, we'd wait for Quorum here.
-            // For this test, since we might not have full Vote network working perfectly synchronously,
-            // we will optimistically finalize if we are leader (to keep liveness in test)
-            // OR we check if we have quorum (which requires other nodes to vote).
-            
-            // Since onPrePrepare broadcasts (if implemented in PBFT.cpp), others should vote.
-            // But let's check if we can wait a bit.
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            
-            // Add block locally
-            blockStore.addBlock(block);
+            // 1. Broadcast Block Proposal
             gossip.broadcastBlock(block);
             
-            // Batching
-            if (block.transactions.size() > 0) {
-                batchManager.addBlock(block);
-                if (batchManager.shouldBatch()) {
-                    Batch batch = batchManager.createBatch();
-                    bridge.settleBatch(batch);
-                }
-            }
-            
-            prevHash = block.calculateHash();
-            lastBlockTime = block.header.timestamp;
-            height++;
-        }
-        else {
-            // Not leader, theoretically we should sync block from leader
-            // For verification, we can just observe if the leader produced logs.
+            // 2. Kickstart local consensus (Leader also votes PREPARE)
+            consensus.onPrePrepare(block);
         }
         
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

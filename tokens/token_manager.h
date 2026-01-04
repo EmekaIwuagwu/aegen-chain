@@ -35,6 +35,7 @@ struct TransferResult {
 class TokenManager {
     std::map<TokenId, TokenInfo> tokens;
     std::map<std::string, uint64_t> balances; // key: tokenId:account
+    std::map<std::string, Address> guards;    // key: guard:tokenId:account
     
     std::string balanceKey(const TokenId& token, const Address& account) const {
         return token + ":" + account;

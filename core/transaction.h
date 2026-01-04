@@ -14,6 +14,7 @@ struct Transaction {
     Signature signature;
     Hash hash;
 
+    static Transaction deserialize(const Bytes& data);
     Bytes serialize() const;
     void calculateHash();
     bool isSignedBy(const PublicKey& pk) const;

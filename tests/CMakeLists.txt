@@ -16,4 +16,4 @@ add_executable(unit_consensus_test unit/consensus_test.cpp)
 target_link_libraries(unit_consensus_test PRIVATE aegen_consensus aegen_core aegen_db aegen_exec aegen_wallet)
 
 add_executable(unit_vm_test unit/vm_test.cpp)
-target_link_libraries(unit_vm_test PRIVATE aegen_exec aegen_core)
+target_link_libraries(unit_vm_test PRIVATE aegen_exec aegen_core aegen_proofs)

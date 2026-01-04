@@ -123,6 +123,14 @@ inline HashArray sha256_bytes(const uint8_t* data, size_t len) {
     return hasher.finalize();
 }
 
+inline HashArray sha256(const std::vector<uint8_t>& data) {
+    return sha256_bytes(data);
+}
+
+inline HashArray sha256(const std::string& data) {
+    return sha256_bytes(reinterpret_cast<const uint8_t*>(data.data()), data.size());
+}
+
 // ============================================================================
 // Ed25519 Compatible Key Generation
 // Uses deterministic derivation from seed (libsodium compatible interface)

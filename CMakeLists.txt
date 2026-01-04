@@ -32,6 +32,7 @@ add_subdirectory(network)
 add_subdirectory(settlement)
 add_subdirectory(proofs)
 add_subdirectory(da)
+add_subdirectory(util)
 add_subdirectory(tests)
 
 # Main Executable
@@ -47,4 +48,5 @@ target_link_libraries(aegen-node PRIVATE
     aegen_db 
     aegen_wallet
     aegen_settlement # Added settlement linkage
+    aegen_util
 )

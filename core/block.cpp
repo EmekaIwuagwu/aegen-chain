@@ -89,9 +89,7 @@ Block Block::deserialize(const std::vector<uint8_t>& data) {
         read(&len, sizeof(uint32_t));
         if (offset + len <= data.size()) {
             std::vector<uint8_t> txData(data.begin() + offset, data.begin() + offset + len);
-            // Assuming Transaction has manual deserialize or we construct from bytes
-            // Since Transaction::deserialize isn't standard, we'll skip fully parsing txs here for now to avoid compilation error
-            // UNLESS Transaction has deserialize. Let's start by just advancing offset.
+            block.transactions.push_back(Transaction::deserialize(txData));
             offset += len;
         }
     }

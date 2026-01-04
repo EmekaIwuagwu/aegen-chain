@@ -7,4 +7,4 @@ target_include_directories(aegen_exec PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}
 )
-target_link_libraries(aegen_exec PUBLIC aegen_core aegen_db aegen_tokens)
+target_link_libraries(aegen_exec PUBLIC aegen_core aegen_db aegen_tokens aegen_util aegen_proofs)

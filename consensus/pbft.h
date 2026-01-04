@@ -29,8 +29,9 @@ class PBFT {
     std::vector<std::string> validators;
     std::map<Hash, std::vector<Vote>> prepareVotes;
     std::map<Hash, std::vector<Vote>> commitVotes;
+    std::map<Hash, Block> pendingBlocks; // Store blocks during consensus
     ConsensusState state;
-    std::mutex voteMutex;
+    std::recursive_mutex voteMutex;
     std::string consensusDbPath; // For persistence
     
     size_t quorumSize() const { return (validators.size() * 2) / 3 + 1; }
@@ -55,8 +56,7 @@ public:
     ConsensusState getState() const { return state; }
     
     std::function<void(const Block&)> onBlockFinalized;
-    std::function<void(const Vote&)> broadcastVote;
+    std::function<void(const Vote&, const std::string&)> broadcastVote;
 };
 
 }
-

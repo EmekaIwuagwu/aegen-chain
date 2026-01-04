@@ -8,15 +8,20 @@
 
 namespace aegen {
 
+// Forward declaration
+class ExecutionEngine;
+
 class RPCEndpoints {
     Mempool& mempool;
     StateManager& stateManager;
     TokenManager& tokenManager;
+    ExecutionEngine* executionEngine = nullptr; // Optional for now or set via setter/ctor
     RPCServer& server;
     BlockStore* blockStore = nullptr;
 
 public:
     RPCEndpoints(Mempool& mp, StateManager& sm, TokenManager& tm, RPCServer& srv);
+    void setExecutionEngine(ExecutionEngine* engine) { executionEngine = engine; }
     void setBlockStore(BlockStore* store) { blockStore = store; }
     void registerAll();
 
@@ -25,6 +30,14 @@ public:
     std::string handleGetBalance(const std::string& json);
     std::string handleGetChainInfo(const std::string& json);
     std::string handleGetNonce(const std::string& json);
+    
+    // Ethereum JSON-RPC Handlers
+    std::string handleEthChainId(const std::string& json);
+    std::string handleEthBlockNumber(const std::string& json);
+    std::string handleEthGetBalance(const std::string& json);
+    std::string handleEthCall(const std::string& json);
+    std::string handleEthGetTransactionReceipt(const std::string& json);
+    std::string handleEthSendRawTransaction(const std::string& json);
     
     // Token Handlers
     std::string handleCreateToken(const std::string& json);
@@ -56,4 +69,5 @@ private:
 };
 
 }
+
 
