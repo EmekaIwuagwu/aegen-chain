@@ -9,6 +9,10 @@
 
 **Aegen** is a high-performance **Layer-2 blockchain** for the **Kadena** ecosystem, featuring optimistic rollup settlement to Kadena L1, Pact-compatible token operations, fraud proofs, data availability, and Docker-based multi-validator deployment.
 
+<p align="center">
+  <img src="screenshots/explorer_dashboard.png" alt="Aegen Block Explorer" width="800"/>
+</p>
+
 ---
 
 ## ✨ Key Features
