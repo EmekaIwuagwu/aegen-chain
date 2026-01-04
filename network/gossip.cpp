@@ -77,9 +77,9 @@ void Gossip::broadcastBlock(const Block& block) {
     msg.type = MessageType::BLOCK;
     msg.timestamp = std::time(nullptr);
     
-    std::stringstream ss;
-    ss << block.header.height << "|" << crypto::to_hex(block.header.stateRoot) << "|" << block.transactions.size();
-    msg.payload = ss.str();
+    // Send full block for sync
+    std::vector<uint8_t> data = block.serialize();
+    msg.payload = crypto::to_hex(data);
     
     broadcast(msg);
 }

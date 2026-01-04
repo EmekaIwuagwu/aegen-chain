@@ -22,6 +22,10 @@ public:
 
     Hash calculateHash() const;
     void addTransaction(const Transaction& tx);
+    
+    // Serialization
+    std::vector<uint8_t> serialize() const;
+    static Block deserialize(const std::vector<uint8_t>& data);
 };
 
 }

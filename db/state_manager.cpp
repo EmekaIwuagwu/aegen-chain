@@ -3,22 +3,23 @@
 
 namespace aegen {
 
-// In-Memory cache for development/testing when RocksDB isn't setup
-static std::map<std::string, std::string> g_mockDb;
-static std::map<Address, AccountState> g_accountCache;
+// In-Memory cache replaced by member cache with mutex for thread safety
 
 StateManager::StateManager(RocksDBWrapper& db) : db(db) {}
 
 AccountState StateManager::getAccountState(const Address& addr) {
-    if (g_accountCache.contains(addr)) {
-        return g_accountCache[addr];
+    std::shared_lock<std::shared_mutex> lock(cacheMutex);
+    auto it = cache.find(addr);
+    if (it != cache.end()) {
+        return it->second;
     }
     // Return empty/default state if not found
     return AccountState{0, 0};
 }
 
 void StateManager::setAccountState(const Address& addr, const AccountState& state) {
-    g_accountCache[addr] = state;
+    std::unique_lock<std::shared_mutex> lock(cacheMutex);
+    cache[addr] = state;
 }
 
 void StateManager::commit() {
@@ -27,8 +28,8 @@ void StateManager::commit() {
 }
 
 void StateManager::rollback() {
-    // Clean cache
-    g_accountCache.clear();
+    std::unique_lock<std::shared_mutex> lock(cacheMutex);
+    cache.clear();
 }
 
 Hash StateManager::getRootHash() {
