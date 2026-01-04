@@ -30,11 +30,9 @@ RPCServer::RPCServer() : running(false) {
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
     
-    // Initialize thread pool
+    // Initialize thread pool - workers will start processing immediately
     std::cout << "[RPC] Initializing thread pool with " << THREAD_POOL_SIZE << " workers..." << std::endl;
-    for (size_t i = 0; i < THREAD_POOL_SIZE; ++i) {
-        workerPool.emplace_back(&RPCServer::workerThread, this);
-    }
+    // Note: Don't start workers yet - wait until start() is called
 }
 
 RPCServer::~RPCServer() {
@@ -59,32 +57,53 @@ RPCServer::~RPCServer() {
 }
 
 void RPCServer::workerThread() {
-    while (true) {
-        uintptr_t clientSocket;
+    std::cout << "[RPC WORKER] Thread started, running=" << running << std::endl;
+    
+    while (running) {
+        uintptr_t clientSocket = 0;
         
         {
             std::unique_lock<std::mutex> lock(queueMutex);
+            // Wait until there's a task or we're shutting down (removed spam logging)
             queueCV.wait(lock, [this] { return !running || !taskQueue.empty(); });
             
-            if (!running && taskQueue.empty()) {
-                return; // Exit worker thread
+            std::cout << "[RPC WORKER] Woke up! running=" << running << ", queue size=" << taskQueue.size() << std::endl;
+            
+            if (!running) {
+                std::cout << "[RPC WORKER] Shutting down" << std::endl;
+                return; // Exit worker thread on shutdown
             }
             
             if (taskQueue.empty()) {
-                continue;
+                std::cout << "[RPC WORKER] Queue empty (spurious wakeup)" << std::endl;
+                continue; // Spurious wakeup
             }
             
             clientSocket = taskQueue.front();
             taskQueue.pop();
+            std::cout << "[RPC WORKER] Got task, processing socket " << clientSocket << std::endl;
         }
         
-        // Process the client request
-        handleClient(clientSocket);
+        // Process the client request outside the lock
+        if (clientSocket != 0) {
+            handleClient(clientSocket);
+            std::cout << "[RPC WORKER] Task completed" << std::endl;
+        }
     }
+    std::cout << "[RPC WORKER] Thread exiting" << std::endl;
 }
 
 void RPCServer::start(int port) {
     running = true;
+    std::cout << "[RPC DEBUG] Setting running = true" << std::endl;
+    
+    // Start worker threads now that running is true
+    std::cout << "[RPC DEBUG] Starting " << THREAD_POOL_SIZE << " worker threads..." << std::endl;
+    for (size_t i = 0; i < THREAD_POOL_SIZE; ++i) {
+        workerPool.emplace_back(&RPCServer::workerThread, this);
+    }
+    std::cout << "[RPC DEBUG] All workers started" << std::endl;
+    
     serverThread = std::thread(&RPCServer::listenLoop, this, port);
 }
 
@@ -124,19 +143,28 @@ void RPCServer::listenLoop(int port) {
     }
 
     std::cout << "RPC Server listening on port " << port << std::endl;
+    std::cout << "[RPC DEBUG] Entering accept loop, running=" << running << std::endl;
 
     while (running) {
+        std::cout << "[RPC DEBUG] Calling accept()..." << std::endl;
         socket_t ClientSocket = accept(ListenSocket, NULL, NULL);
+        std::cout << "[RPC DEBUG] accept() returned: " << ClientSocket << std::endl;
+        
         if (ClientSocket == SOCKET_INVALID) {
+            std::cout << "[RPC DEBUG] Invalid socket, continuing..." << std::endl;
             continue;
         }
+        
+        std::cout << "[RPC DEBUG] New connection accepted, socket=" << ClientSocket << std::endl;
         
         // SECURITY FIX: Use thread pool instead of spawning unlimited threads
         {
             std::unique_lock<std::mutex> lock(queueMutex);
             taskQueue.push((uintptr_t)ClientSocket);
+            std::cout << "[RPC DEBUG] Task added to queue (size now: " << taskQueue.size() << ")" << std::endl;
         }
         queueCV.notify_one();
+        std::cout << "[RPC DEBUG] Worker notified" << std::endl;
     }
 
     CLOSE_SOCKET(ListenSocket);
