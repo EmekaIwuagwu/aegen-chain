@@ -4,6 +4,7 @@
 #include "db/block_store.h"
 #include "tokens/token_manager.h"
 #include "network/rpc_server.h"
+#include <set>
 
 namespace aegen {
 
@@ -36,6 +37,15 @@ public:
 private:
     std::set<std::string> processedBridgeTxs; // Replay protection
     
+    // SECURITY FIX: Bridge security - authorized relayers (simulating multisig/oracle)
+    std::set<std::string> authorizedRelayers = {
+        "k:BRIDGE_RELAYER_1",
+        "k:BRIDGE_RELAYER_2", 
+        "k:BRIDGE_RELAYER_3"
+    };
+    
+    bool verifyRelayerSignature(const std::string& relayerId, const std::string& signature);
+    
     // Explorer Handlers
     std::string handleGetBlocks(const std::string& json);
     std::string handleGetBlock(const std::string& json);
@@ -46,3 +56,4 @@ private:
 };
 
 }
+

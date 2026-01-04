@@ -29,13 +29,58 @@ RPCServer::RPCServer() : running(false) {
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
+    
+    // Initialize thread pool
+    std::cout << "[RPC] Initializing thread pool with " << THREAD_POOL_SIZE << " workers..." << std::endl;
+    for (size_t i = 0; i < THREAD_POOL_SIZE; ++i) {
+        workerPool.emplace_back(&RPCServer::workerThread, this);
+    }
 }
 
 RPCServer::~RPCServer() {
     stop();
+    
+    // Shutdown thread pool
+    {
+        std::unique_lock<std::mutex> lock(queueMutex);
+        running = false;
+    }
+    queueCV.notify_all();
+    
+    for (auto& worker : workerPool) {
+        if (worker.joinable()) {
+            worker.join();
+        }
+    }
+    
 #ifdef _WIN32
     WSACleanup();
 #endif
+}
+
+void RPCServer::workerThread() {
+    while (true) {
+        uintptr_t clientSocket;
+        
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            queueCV.wait(lock, [this] { return !running || !taskQueue.empty(); });
+            
+            if (!running && taskQueue.empty()) {
+                return; // Exit worker thread
+            }
+            
+            if (taskQueue.empty()) {
+                continue;
+            }
+            
+            clientSocket = taskQueue.front();
+            taskQueue.pop();
+        }
+        
+        // Process the client request
+        handleClient(clientSocket);
+    }
 }
 
 void RPCServer::start(int port) {
@@ -85,7 +130,13 @@ void RPCServer::listenLoop(int port) {
         if (ClientSocket == SOCKET_INVALID) {
             continue;
         }
-        std::thread(&RPCServer::handleClient, this, (uintptr_t)ClientSocket).detach();
+        
+        // SECURITY FIX: Use thread pool instead of spawning unlimited threads
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            taskQueue.push((uintptr_t)ClientSocket);
+        }
+        queueCV.notify_one();
     }
 
     CLOSE_SOCKET(ListenSocket);

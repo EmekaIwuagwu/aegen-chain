@@ -4,6 +4,8 @@
 #include <map>
 #include <mutex>
 #include <functional>
+#include <string>
+#include <fstream>
 
 namespace aegen {
 
@@ -29,8 +31,13 @@ class PBFT {
     std::map<Hash, std::vector<Vote>> commitVotes;
     ConsensusState state;
     std::mutex voteMutex;
+    std::string consensusDbPath; // For persistence
     
     size_t quorumSize() const { return (validators.size() * 2) / 3 + 1; }
+    
+    // SECURITY FIX: Add persistence to prevent double-voting after restart
+    void persistVote(const std::string& voteType, const Vote& vote);
+    void loadPersistedVotes();
 
 public:
     PBFT(const std::string& id, const std::vector<std::string>& validatorSet);
@@ -52,3 +59,4 @@ public:
 };
 
 }
+

@@ -167,10 +167,18 @@ std::string KadenaClient::httpPostWindows(const std::string& url, const std::str
             WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
         if (!hRequest) throw std::runtime_error("WinHttpOpenRequest failed");
         
-        DWORD secFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA |
-                         SECURITY_FLAG_IGNORE_CERT_DATE_INVALID |
-                         SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
-        WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &secFlags, sizeof(secFlags));
+        // SECURITY FIX: Enable proper SSL certificate validation
+        // Removed SECURITY_FLAG_IGNORE_* flags to prevent MITM attacks
+        // Only disable for local development with self-signed certs
+        bool isLocalDev = (host.find("localhost") != std::string::npos || 
+                           host.find("127.0.0.1") != std::string::npos);
+        if (isLocalDev) {
+            std::cout << "[KADENA HTTPS] WARNING: Disabling SSL validation for localhost" << std::endl;
+            DWORD secFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA |
+                             SECURITY_FLAG_IGNORE_CERT_DATE_INVALID |
+                             SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
+            WinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &secFlags, sizeof(secFlags));
+        }
         
         std::wstring headers = L"Content-Type: application/json\r\n";
         WinHttpAddRequestHeaders(hRequest, headers.c_str(), -1L, WINHTTP_ADDREQ_FLAG_ADD);

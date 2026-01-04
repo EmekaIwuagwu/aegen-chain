@@ -15,7 +15,9 @@
 #include "settlement/batch.h"
 #include "settlement/bridge.h"
 #include "settlement/kadena_client.h"
+#include "wallet/signer.h"
 #include "util/crypto.h"
+
 
 using namespace aegen;
 

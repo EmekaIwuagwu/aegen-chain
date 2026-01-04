@@ -8,16 +8,48 @@ namespace aegen {
 ExecutionEngine::ExecutionEngine(StateManager& sm) : stateManager(sm) {}
 
 bool ExecutionEngine::validateTransaction(const Transaction& tx) {
-    // 1. Check signature (Mocked for now - production would verify)
+    // 1. Check signature - CRITICAL SECURITY FIX
+    // Extract public key from sender address
+    // For Kadena-style "k:pubkey" addresses
+    if (tx.sender.substr(0, 2) == "k:") {
+        std::string pubKeyHex = tx.sender.substr(2);
+        // Convert hex to bytes
+        PublicKey senderPubKey;
+        if (pubKeyHex.length() == 64) { // 32 bytes = 64 hex chars
+            senderPubKey.resize(32);
+            for (size_t i = 0; i < 32; ++i) {
+                std::string byteStr = pubKeyHex.substr(i * 2, 2);
+                senderPubKey[i] = static_cast<uint8_t>(std::stoul(byteStr, nullptr, 16));
+            }
+            
+            // Verify signature
+            if (tx.signature.empty() || !tx.isSignedBy(senderPubKey)) {
+                std::cerr << "[SECURITY] Signature verification FAILED for " << tx.sender << std::endl;
+                return false;
+            }
+        } else {
+            std::cerr << "[SECURITY] Invalid public key format in address: " << tx.sender << std::endl;
+            return false;
+        }
+    } else {
+        // For simple addresses (alice, bob, etc.) - require signature in production
+        // For now, log a warning
+        std::cerr << "[WARNING] Simple address used without key verification: " << tx.sender << std::endl;
+    }
+    
     // 2. Check nonce
     AccountState senderState = stateManager.getAccountState(tx.sender);
     if (tx.nonce != senderState.nonce) {
+        std::cerr << "[VALIDATION] Nonce mismatch. Expected: " << senderState.nonce 
+                  << ", Got: " << tx.nonce << std::endl;
         return false;
     }
     
     // 3. Check balance
     uint64_t totalCost = tx.amount + (tx.gasLimit * tx.gasPrice);
     if (senderState.balance < totalCost) {
+        std::cerr << "[VALIDATION] Insufficient balance. Required: " << totalCost 
+                  << ", Available: " << senderState.balance << std::endl;
         return false;
     }
 
