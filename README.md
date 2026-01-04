@@ -157,6 +157,107 @@ curl -X POST http://localhost:8545 \
   -d '{"jsonrpc":"2.0","method":"getChainInfo","params":{},"id":1}'
 ```
 
+### Example Responses
+
+**getChainInfo**
+```json
+{
+  "result": {
+    "name": "aegen-l2",
+    "height": 42,
+    "chainId": "30",
+    "mempoolSize": 0,
+    "peerCount": 3,
+    "totalTransactions": 156,
+    "tokenCount": 2,
+    "l1Network": "kadena-mainnet"
+  }
+}
+```
+
+**sendTransaction**
+```bash
+curl -X POST http://localhost:8545 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"sendTransaction","params":[{"sender":"alice","receiver":"bob","amount":"1000","nonce":"0"}],"id":1}'
+```
+```json
+{
+  "result": {
+    "requestKey": "fa8dd885c457e0faa4d5cfb38dab4e04012c9b8a1e..."
+  }
+}
+```
+
+**getBalance**
+```bash
+curl -X POST http://localhost:8545 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"getBalance","params":[{"account":"alice"}],"id":1}'
+```
+```json
+{
+  "result": 9957800
+}
+```
+
+**eth_getTransactionReceipt**
+```bash
+curl -X POST http://localhost:8545 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0xfa8dd885c457e0faa4d5cfb38dab4e04012c9b8a1e..."],"id":1}'
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "transactionHash": "0xfa8dd885c457e0faa4d5cfb38dab4e04...",
+    "transactionIndex": "0x0",
+    "blockHash": "0x000...000",
+    "blockNumber": "0x2a",
+    "from": "alice",
+    "to": "bob",
+    "cumulativeGasUsed": "0x5208",
+    "gasUsed": "0x5208",
+    "contractAddress": null,
+    "logs": [],
+    "status": "0x1"
+  }
+}
+```
+
+**generateWallet**
+```bash
+curl -X POST http://localhost:8545 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"generateWallet","params":{},"id":1}'
+```
+```json
+{
+  "result": {
+    "address": "k:96b66bbddfec967660eb3fe727360b8b2697d516a9cb1733a3ccf949b524596b",
+    "publicKey": "96b66bbddfec967660eb3fe727360b8b2697d516a9cb1733a3ccf949b524596b",
+    "privateKey": "a1b2c3d4e5f6..."
+  }
+}
+```
+
+**createFungible (Token Creation)**
+```bash
+curl -X POST http://localhost:8545 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"createFungible","params":[{"name":"TestToken","symbol":"TST","precision":"18","initialSupply":"1000000","creator":"alice"}],"id":1}'
+```
+```json
+{
+  "result": {
+    "module": "coin.62e8c2dcd1ff9562",
+    "status": "deployed"
+  }
+}
+```
+
 ---
 
 ## 🏗️ Architecture
